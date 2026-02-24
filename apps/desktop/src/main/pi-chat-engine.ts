@@ -113,6 +113,10 @@ const PROXY_PROVIDER_ID = 'antseed-proxy';
 const PROXY_RUNTIME_API_KEY = 'antseed-local-proxy';
 const CHAT_SYSTEM_PROMPT_ENV = 'ANTSEED_CHAT_SYSTEM_PROMPT';
 const CHAT_SYSTEM_PROMPT_FILE_ENV = 'ANTSEED_CHAT_SYSTEM_PROMPT_FILE';
+const CHAT_STREAM_TOTAL_TIMEOUT_ENV = 'ANTSEED_CHAT_STREAM_TOTAL_TIMEOUT_MS';
+const CHAT_STREAM_IDLE_TIMEOUT_ENV = 'ANTSEED_CHAT_STREAM_IDLE_TIMEOUT_MS';
+const DEFAULT_CHAT_STREAM_TOTAL_TIMEOUT_MS = 240_000;
+const DEFAULT_CHAT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 
 function normalizeTokenCount(value: unknown): number {
   const parsed = Number(value);
@@ -120,6 +124,14 @@ function normalizeTokenCount(value: unknown): number {
     return 0;
   }
   return Math.floor(parsed);
+}
+
+function resolveTimeoutMs(raw: string | undefined, fallback: number): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.max(Math.floor(parsed), 1_000), 30 * 60 * 1_000);
 }
 
 function normalizeOptionalNumber(value: unknown): number | undefined {
@@ -688,6 +700,51 @@ function createBuyerProxyStreamFn(
 ): (model: Model<any>, context: Context, options?: StreamOptions) => ReturnType<typeof createAssistantMessageEventStream> {
   return (model, context, options) => {
     const stream = createAssistantMessageEventStream();
+    const totalTimeoutMs = resolveTimeoutMs(process.env[CHAT_STREAM_TOTAL_TIMEOUT_ENV], DEFAULT_CHAT_STREAM_TOTAL_TIMEOUT_MS);
+    const idleTimeoutMs = resolveTimeoutMs(process.env[CHAT_STREAM_IDLE_TIMEOUT_ENV], DEFAULT_CHAT_STREAM_IDLE_TIMEOUT_MS);
+    const timeoutController = new AbortController();
+    const parentSignal = options?.signal;
+    let timeoutErrorMessage: string | null = null;
+    let totalTimeout: ReturnType<typeof setTimeout> | null = null;
+    let idleTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const clearIdleTimeout = (): void => {
+      if (!idleTimeout) return;
+      clearTimeout(idleTimeout);
+      idleTimeout = null;
+    };
+    const clearTotalTimeout = (): void => {
+      if (!totalTimeout) return;
+      clearTimeout(totalTimeout);
+      totalTimeout = null;
+    };
+    const triggerTimeoutAbort = (message: string): void => {
+      if (timeoutController.signal.aborted) return;
+      timeoutErrorMessage = message;
+      timeoutController.abort();
+    };
+    const resetIdleTimeout = (): void => {
+      clearIdleTimeout();
+      idleTimeout = setTimeout(() => {
+        triggerTimeoutAbort(`Proxy stream idle timeout after ${String(idleTimeoutMs)}ms`);
+      }, idleTimeoutMs);
+    };
+
+    totalTimeout = setTimeout(() => {
+      triggerTimeoutAbort(`Proxy stream timed out after ${String(totalTimeoutMs)}ms`);
+    }, totalTimeoutMs);
+
+    const onParentAbort = (): void => {
+      if (timeoutController.signal.aborted) return;
+      timeoutController.abort();
+    };
+    if (parentSignal) {
+      if (parentSignal.aborted) {
+        timeoutController.abort();
+      } else {
+        parentSignal.addEventListener('abort', onParentAbort, { once: true });
+      }
+    }
 
     void (async () => {
       const startedAt = Date.now();
@@ -733,7 +790,7 @@ function createBuyerProxyStreamFn(
             ...(options?.headers ?? {}),
           },
           body: requestBodyJson,
-          signal: options?.signal,
+          signal: timeoutController.signal,
         });
 
         responseMeta = parseProxyMeta(response, startedAt);
@@ -821,9 +878,11 @@ function createBuyerProxyStreamFn(
         const decoder = new TextDecoder();
         const toolJsonByContentIndex = new Map<number, string>();
 
+        resetIdleTimeout();
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          resetIdleTimeout();
 
           sseBuffer += decoder.decode(value, { stream: true });
           const lines = sseBuffer.split('\n');
@@ -974,11 +1033,13 @@ function createBuyerProxyStreamFn(
         });
         stream.end();
       } catch (error) {
-        const aborted = Boolean(options?.signal?.aborted);
+        const aborted = Boolean(parentSignal?.aborted);
+        const errorMessage = timeoutErrorMessage
+          ?? (error instanceof Error ? error.message : String(error));
         const failed: AssistantMessage = {
           ...message,
           stopReason: aborted ? 'aborted' : 'error',
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
           timestamp: Date.now(),
         };
         stream.push({
@@ -987,6 +1048,12 @@ function createBuyerProxyStreamFn(
           error: failed,
         });
         stream.end();
+      } finally {
+        clearIdleTimeout();
+        clearTotalTimeout();
+        if (parentSignal) {
+          parentSignal.removeEventListener('abort', onParentAbort);
+        }
       }
     })();
 
@@ -1484,6 +1551,10 @@ export function registerPiChatHandlers({
 
     try {
       await session.prompt(trimmedMessage);
+      if (!streamDone) {
+        streamDone = true;
+        sendToRenderer('chat:ai-stream-done', { conversationId });
+      }
       return { ok: true };
     } catch (error) {
       if ((error as Error).name === 'AbortError') {

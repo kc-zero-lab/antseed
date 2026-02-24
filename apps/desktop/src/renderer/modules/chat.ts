@@ -16,6 +16,9 @@ export function initChatModule({
   let activeConversation: any = null;
   let activeStreamTurn: number | null = null;
   let activeStreamStartedAt = 0;
+  let streamingIndicatorTimer: number | null = null;
+  let proxyState: 'unknown' | 'online' | 'offline' = 'unknown';
+  let proxyPort = 0;
 
   function formatChatTime(timestamp) {
     const d = new Date(timestamp);
@@ -123,11 +126,79 @@ export function initChatModule({
     return myrmecochoryPhrases[index];
   }
 
+  function formatElapsedMs(elapsedMs) {
+    const totalSeconds = Math.max(0, Math.floor(Number(elapsedMs) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function clearStreamingIndicatorTimer() {
+    if (streamingIndicatorTimer !== null) {
+      clearInterval(streamingIndicatorTimer);
+      streamingIndicatorTimer = null;
+    }
+  }
+
+  function ensureStreamingIndicatorTimer() {
+    if (streamingIndicatorTimer !== null) return;
+    streamingIndicatorTimer = window.setInterval(() => {
+      if (!uiState.chatSending) {
+        clearStreamingIndicatorTimer();
+        return;
+      }
+      updateStreamingIndicator();
+    }, 1000);
+  }
+
   function isToolResultOnlyMessage(msg) {
     return msg.role === 'user'
       && Array.isArray(msg.content)
       && msg.content.length > 0
       && msg.content.every((b) => b.type === 'tool_result');
+  }
+
+  function isConnectRunning() {
+    const processes = Array.isArray(uiState.processes) ? uiState.processes : [];
+    return processes.some((proc) => proc && proc.mode === 'connect' && Boolean(proc.running));
+  }
+
+  function normalizeRouterLabel(routerRaw) {
+    const raw = String(routerRaw || '').trim().toLowerCase();
+    if (!raw) return 'local-proxy';
+    if (
+      raw === 'claude-code'
+      || raw === '@antseed/router-local-proxy'
+      || raw === 'antseed-router-local-proxy'
+      || raw === 'router-local-proxy'
+    ) {
+      return 'local-proxy';
+    }
+    if (
+      raw === '@antseed/router-local-chat'
+      || raw === 'antseed-router-local-chat'
+      || raw === 'router-local-chat'
+    ) {
+      return 'local-chat';
+    }
+    return raw;
+  }
+
+  function formatGenericChatStatus() {
+    const buyerConnected = isConnectRunning();
+    const router = normalizeRouterLabel(elements.connectRouter?.value);
+    const peerCount = Array.isArray(uiState.lastPeers) ? uiState.lastPeers.length : 0;
+    const peerText = `${peerCount} peer${peerCount === 1 ? '' : 's'}`;
+    const proxyText = proxyState === 'online'
+      ? `Proxy ${proxyPort > 0 ? `:${proxyPort}` : 'online'}`
+      : proxyState === 'offline'
+        ? 'Proxy offline'
+        : 'Proxy n/a';
+    return `Buyer ${buyerConnected ? 'connected' : 'offline'} · Router ${router} · ${peerText} · ${proxyText}`;
   }
 
   function countBlocks(blocks) {
@@ -149,12 +220,22 @@ export function initChatModule({
 
   function updateStreamingIndicator() {
     if (!elements.chatStreamingIndicator) return;
+    elements.chatStreamingIndicator.classList.toggle('is-thinking', Boolean(uiState.chatSending));
+
+    const genericStatus = formatGenericChatStatus();
+    const elapsedText = activeStreamStartedAt > 0
+      ? ` · ${formatElapsedMs(Date.now() - activeStreamStartedAt)}`
+      : '';
     if (activeStreamTurn !== null && uiState.chatSending) {
       const label = getMyrmecochoryLabel(activeStreamTurn);
-      elements.chatStreamingIndicator.innerHTML = `<span class="chat-streaming-dot"></span> Turn ${activeStreamTurn} · ${label}`;
+      elements.chatStreamingIndicator.textContent = `Turn ${activeStreamTurn} · ${label}${elapsedText} · ${genericStatus}`;
       return;
     }
-    elements.chatStreamingIndicator.innerHTML = '<span class="chat-streaming-dot"></span> Generating response...';
+    if (uiState.chatSending) {
+      elements.chatStreamingIndicator.textContent = `Generating response...${elapsedText} · ${genericStatus}`;
+      return;
+    }
+    elements.chatStreamingIndicator.textContent = genericStatus;
   }
 
   function updateThreadMeta(conv) {
@@ -443,20 +524,33 @@ export function initChatModule({
   }
 
   async function refreshChatProxyStatus() {
-    if (!bridge || !bridge.chatAiGetProxyStatus) return;
+    if (!bridge || !bridge.chatAiGetProxyStatus) {
+      proxyState = 'unknown';
+      proxyPort = 0;
+      updateStreamingIndicator();
+      return;
+    }
 
     try {
       const result = await bridge.chatAiGetProxyStatus();
       if (result.ok && result.data) {
         const { running, port } = result.data;
         if (running) {
+          proxyState = 'online';
+          proxyPort = Number(port) || 0;
           setBadgeTone(elements.chatProxyStatus, 'active', `Proxy :${port}`);
         } else {
+          proxyState = 'offline';
+          proxyPort = 0;
           setBadgeTone(elements.chatProxyStatus, 'idle', 'Proxy offline');
         }
       }
     } catch {
+      proxyState = 'offline';
+      proxyPort = 0;
       setBadgeTone(elements.chatProxyStatus, 'idle', 'Proxy offline');
+    } finally {
+      updateStreamingIndicator();
     }
   }
 
@@ -480,6 +574,8 @@ export function initChatModule({
       }
     } catch {
       // Chat unavailable
+    } finally {
+      updateStreamingIndicator();
     }
   }
 
@@ -724,7 +820,14 @@ export function initChatModule({
       elements.chatSendBtn.style.display = sending ? 'none' : '';
     }
     if (elements.chatAbortBtn) elements.chatAbortBtn.style.display = sending ? '' : 'none';
-    if (elements.chatStreamingIndicator) elements.chatStreamingIndicator.style.display = sending ? '' : 'none';
+    if (sending) {
+      if (activeStreamStartedAt <= 0) {
+        activeStreamStartedAt = Date.now();
+      }
+      ensureStreamingIndicatorTimer();
+    } else {
+      clearStreamingIndicatorTimer();
+    }
     if (!sending) {
       activeStreamTurn = null;
       activeStreamStartedAt = 0;
@@ -763,6 +866,14 @@ export function initChatModule({
           showChatError(message);
           appendSystemLog(`Chat error: ${message}`);
           setChatSending(false);
+        } else if (uiState.chatSending) {
+          // Fallback in case stream completion event is missed.
+          setChatSending(false);
+          clearChatError();
+          void refreshChatConversations();
+          if (uiState.chatActiveConversation) {
+            void openConversation(uiState.chatActiveConversation);
+          }
         }
       } else if (bridge.chatAiSend) {
         const result = await bridge.chatAiSend(convId, content, model);
@@ -811,6 +922,12 @@ export function initChatModule({
     });
     elements.chatInput.addEventListener('input', () => {
       autoGrowTextarea(elements.chatInput);
+    });
+  }
+
+  if (elements.connectRouter) {
+    elements.connectRouter.addEventListener('input', () => {
+      updateStreamingIndicator();
     });
   }
 
@@ -1074,6 +1191,7 @@ export function initChatModule({
   }
 
   updateThreadMeta(null);
+  updateStreamingIndicator();
 
   return {
     refreshChatProxyStatus,
