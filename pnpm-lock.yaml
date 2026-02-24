@@ -75,6 +75,15 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@fastify/cors':
+        specifier: ^10.0.0
+        version: 10.1.0
+      '@fastify/static':
+        specifier: ^9.0.0
+        version: 9.0.0
+      '@fastify/websocket':
+        specifier: ^11.2.0
+        version: 11.2.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@mariozechner/pi-ai':
         specifier: ^0.54.2
         version: 0.54.2(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -84,9 +93,15 @@ importers:
       '@walletconnect/ethereum-provider':
         specifier: ^2.17.0
         version: 2.23.6(@types/react@18.3.28)(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      antseed-dashboard:
+        specifier: workspace:*
+        version: link:../dashboard
       ethers:
         specifier: ^6.13.0
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      fastify:
+        specifier: ^5.7.4
+        version: 5.7.4
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
