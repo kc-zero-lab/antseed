@@ -53,6 +53,7 @@ const plugin: AntseedProviderPlugin = {
         tokenProvider,
         maxConcurrency,
         allowedModels,
+        extraHeaders: { 'anthropic-beta': 'oauth-2025-04-20' },
       },
     });
   },

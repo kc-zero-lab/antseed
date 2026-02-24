@@ -60,6 +60,12 @@ function normalizeProviderIdentifier(value: string | undefined): string {
   if (raw === '@antseed/provider-local-llm' || raw === 'antseed-provider-local-llm') {
     return 'local-llm';
   }
+  if (raw === '@antseed/provider-claude-code' || raw === 'antseed-provider-claude-code') {
+    return 'claude-code';
+  }
+  if (raw === '@antseed/provider-claude-oauth') {
+    return 'claude-oauth';
+  }
 
   return raw;
 }

@@ -25,6 +25,13 @@ const PROVIDER_PACKAGE_ALIASES: Record<string, string> = {
   'antseed-provider-anthropic': '@antseed/provider-anthropic',
   'antseed-provider-openrouter': '@antseed/provider-openrouter',
   'antseed-provider-local-llm': '@antseed/provider-local-llm',
+  'claude-code': '@antseed/provider-claude-code',
+  'provider-claude-code': '@antseed/provider-claude-code',
+  'antseed-provider-claude-code': '@antseed/provider-claude-code',
+  '@antseed/provider-claude-code': '@antseed/provider-claude-code',
+  'claude-oauth': '@antseed/provider-claude-oauth',
+  'provider-claude-oauth': '@antseed/provider-claude-oauth',
+  '@antseed/provider-claude-oauth': '@antseed/provider-claude-oauth',
   '@antseed/provider-anthropic': '@antseed/provider-anthropic',
   '@antseed/provider-openrouter': '@antseed/provider-openrouter',
   '@antseed/provider-local-llm': '@antseed/provider-local-llm',
@@ -369,6 +376,8 @@ function normalizeProviderRuntime(value) {
   if (raw === '@antseed/provider-anthropic' || raw === 'antseed-provider-anthropic') return 'anthropic';
   if (raw === '@antseed/provider-openrouter' || raw === 'antseed-provider-openrouter') return 'openrouter';
   if (raw === '@antseed/provider-local-llm' || raw === 'antseed-provider-local-llm') return 'local-llm';
+  if (raw === '@antseed/provider-claude-code' || raw === 'antseed-provider-claude-code') return 'claude-code';
+  if (raw === '@antseed/provider-claude-oauth') return 'claude-oauth';
   return raw;
 }
 
