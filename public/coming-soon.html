@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AntSeed — A Peer-to-Peer AI Services Network</title>
+<meta name="description" content="An open market for machines to trade intelligence. Everyone profits. No one controls." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #0a0e14;
+    --deep: #0d1117;
+    --signal: #e6edf3;
+    --colony: #3dffa2;
+    --pheromone: #8b949e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;
+    background:var(--void);
+    color:var(--signal);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:2rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background-color:rgba(61,255,162,0.25);color:#fff}
+  .content{position:relative;z-index:2}
+  .logo{
+    width:120px;height:120px;margin:0 auto 2rem;
+    opacity:0;animation:fadeUp .8s ease forwards;
+  }
+  .wordmark{
+    font-family:'JetBrains Mono',monospace;font-size:31px;font-weight:700;
+    letter-spacing:-1px;margin-bottom:1.5rem;
+    opacity:0;animation:fadeUp .8s ease .15s forwards;
+  }
+  .wordmark-ant{color:var(--signal)}
+  .wordmark-seed{color:var(--colony)}
+  .tag{
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:4px;
+    text-transform:uppercase;color:var(--pheromone);margin-bottom:2rem;
+    opacity:0;animation:fadeUp .8s ease .3s forwards;
+  }
+  h1{
+    font-size:clamp(36px,5vw,56px);font-weight:700;
+    letter-spacing:-1.5px;line-height:1.2;margin-bottom:1.5rem;
+    opacity:0;animation:fadeUp .8s ease .45s forwards;
+  }
+  h1 span{color:var(--colony)}
+  .desc{
+    font-size:15px;color:var(--pheromone);
+    line-height:2;margin-bottom:3rem;max-width:560px;margin-left:auto;margin-right:auto;
+    opacity:0;animation:fadeUp .8s ease .6s forwards;
+  }
+  .coming{
+    font-family:'JetBrains Mono',monospace;font-size:10px;
+    letter-spacing:4px;text-transform:uppercase;color:var(--colony);opacity:0.5;
+    opacity:0;animation:fadeUp .8s ease .75s forwards;
+  }
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(16px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+</style>
+</head>
+<body>
+  <div class="content">
+    <svg class="logo" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="40" cy="22" rx="5" ry="5.5" fill="#3dffa2" opacity="0.9"/>
+      <ellipse cx="40" cy="36" rx="7" ry="8" fill="#3dffa2"/>
+      <ellipse cx="40" cy="55" rx="9" ry="12" fill="#3dffa2" opacity="0.9"/>
+      <line x1="37" y1="17" x2="28" y2="6" stroke="#3dffa2" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <line x1="43" y1="17" x2="52" y2="6" stroke="#3dffa2" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+      <circle cx="28" cy="6" r="2.5" fill="#3dffa2" opacity="0.6"/>
+      <circle cx="52" cy="6" r="2.5" fill="#3dffa2" opacity="0.6"/>
+      <line x1="34" y1="30" x2="18" y2="22" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <line x1="46" y1="30" x2="62" y2="22" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="18" cy="22" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <circle cx="62" cy="22" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <line x1="33" y1="38" x2="14" y2="40" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <line x1="47" y1="38" x2="66" y2="40" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="14" cy="40" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <circle cx="66" cy="40" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <line x1="34" y1="52" x2="16" y2="60" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <line x1="46" y1="52" x2="64" y2="60" stroke="#3dffa2" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="16" cy="60" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <circle cx="64" cy="60" r="2.5" fill="#3dffa2" opacity="0.5"/>
+      <line x1="18" y1="22" x2="14" y2="40" stroke="#3dffa2" stroke-width="0.7" stroke-linecap="round" opacity="0.15"/>
+      <line x1="62" y1="22" x2="66" y2="40" stroke="#3dffa2" stroke-width="0.7" stroke-linecap="round" opacity="0.15"/>
+      <line x1="14" y1="40" x2="16" y2="60" stroke="#3dffa2" stroke-width="0.7" stroke-linecap="round" opacity="0.15"/>
+      <line x1="66" y1="40" x2="64" y2="60" stroke="#3dffa2" stroke-width="0.7" stroke-linecap="round" opacity="0.15"/>
+    </svg>
+    <div class="wordmark"><span class="wordmark-ant">ANT</span><span class="wordmark-seed">SEED</span></div>
+    <div class="tag">A Peer-to-Peer AI Services Network</div>
+    <h1>Your AI tools,<br><span>unstoppable.</span></h1>
+    <p class="desc">
+      An open market for machines to trade intelligence. Agents discover, carry, and deliver AI services peer-to-peer. Everyone profits. No one controls.
+    </p>
+    <div class="coming">Coming soon</div>
+  </div>
+</body>
+</html>
