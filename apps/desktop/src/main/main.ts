@@ -24,6 +24,7 @@ import {
   type RuntimeProcessState,
   type StartOptions,
 } from './process-manager.js';
+import { registerPiChatHandlers } from './pi-chat-engine.js';
 import { WalletConnectManager } from './walletconnect.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1201,6 +1202,21 @@ ipcMain.handle('wallet:wc-disconnect', async () => {
 });
 
 // ── AI Chat IPC Handlers ──
+const chatEngine = (process.env['ANTSEED_CHAT_ENGINE'] ?? 'pi').trim().toLowerCase();
+
+if (chatEngine === 'pi') {
+  registerPiChatHandlers({
+    ipcMain,
+    sendToRenderer: (channel, payload) => {
+      mainWindow?.webContents.send(channel, payload);
+    },
+    configPath: ACTIVE_CONFIG_PATH,
+    isBuyerRuntimeRunning: () => getCombinedProcessState().some((state) => state.mode === 'connect' && state.running),
+    appendSystemLog: (line) => {
+      appendLog('dashboard', 'system', line);
+    },
+  });
+} else {
 
 type TextBlock = { type: 'text'; text: string };
 type ThinkingBlock = { type: 'thinking'; thinking: string };
@@ -2561,6 +2577,7 @@ ipcMain.handle('chat:ai-send-stream', async (_event, conversationId: string, use
     chatAbortController = null;
   }
 });
+}
 
 ipcMain.handle('runtime:scan-network', async (_event, port?: number) => {
   const requestedPort = toSafeDashboardPort(port);
