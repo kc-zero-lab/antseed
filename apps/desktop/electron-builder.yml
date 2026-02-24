@@ -22,9 +22,12 @@ asarUnpack:
   - "node_modules/keytar/**"
   - "node_modules/node-datachannel/**"
 
+afterPack: ./scripts/after-pack.js
+
 mac:
   category: public.app-category.developer-tools
   icon: assets/antseed-dock-icon.png
+  identity: null
   target:
     - target: dmg
       arch:
