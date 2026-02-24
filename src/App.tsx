@@ -8,7 +8,7 @@ import NotFound from './pages/NotFound'
 function App() {
   return (
     <HelmetProvider>
-    <BrowserRouter basename="/new">
+    <BrowserRouter>
       <div className="min-h-screen">
         <Nav />
         <Routes>
