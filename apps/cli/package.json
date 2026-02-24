@@ -1,0 +1,39 @@
+{
+  "name": "@antseed/cli",
+  "version": "0.1.0",
+  "description": "Antseed Network CLI and Web Dashboard",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "antseed": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc",
+    "postbuild": "chmod +x dist/cli/index.js",
+    "prepack": "npm run build",
+    "dev": "tsx watch src/cli/index.ts",
+    "start:seed": "node dist/cli/index.js seed",
+    "start:connect": "node dist/cli/index.js connect",
+    "start:dashboard": "node dist/cli/index.js dashboard",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test dist/config/*.test.js dist/cli/commands/*.test.js"
+  },
+  "dependencies": {
+    "@antseed/node": "file:../node",
+    "antseed-dashboard": "file:../dashboard",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.3",
+    "dotenv": "^16.6.1",
+    "open": "^11.0.0",
+    "ora": "^9.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

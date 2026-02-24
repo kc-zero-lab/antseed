@@ -1,0 +1,113 @@
+import type { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import Table from 'cli-table3';
+import { getGlobalOptions } from './types.js';
+import { loadConfig } from '../../config/loader.js';
+import { AntseedNode } from '@antseed/node';
+import { parseBootstrapList, toBootstrapConfig } from '@antseed/node/discovery';
+
+function getReputationColor(reputation: number): (message: string) => string {
+  if (reputation >= 80) {
+    return chalk.green;
+  }
+  if (reputation >= 50) {
+    return chalk.yellow;
+  }
+  return chalk.red;
+}
+
+/**
+ * Register the `antseed browse` command on the Commander program.
+ * Discovers peers on the network and displays available models, prices, and reputation.
+ */
+export function registerBrowseCommand(program: Command): void {
+  program
+    .command('browse')
+    .description('Browse available models, prices, and reputation on the P2P network')
+    .option('-m, --model <model>', 'filter by model name')
+    .option('--json', 'output as JSON', false)
+    .action(async (options) => {
+      const globalOpts = getGlobalOptions(program);
+      const config = await loadConfig(globalOpts.config);
+
+      const bootstrapNodes = config.network.bootstrapNodes.length > 0
+        ? toBootstrapConfig(parseBootstrapList(config.network.bootstrapNodes))
+        : undefined;
+
+      const spinner = ora('Discovering peers on the network...').start();
+
+      const node = new AntseedNode({
+        role: 'buyer',
+        bootstrapNodes,
+      });
+
+      try {
+        await node.start();
+      } catch (err) {
+        spinner.fail(chalk.red(`Failed to connect to network: ${(err as Error).message}`));
+        process.exit(1);
+      }
+
+      try {
+        const peers = await node.discoverPeers(options.model as string | undefined);
+        spinner.succeed(chalk.green(`Found ${peers.length} peer(s)`));
+
+        if (peers.length === 0) {
+          console.log(chalk.dim('No peers found. Try again later or check your bootstrap nodes.'));
+          await node.stop();
+          return;
+        }
+
+        if (options.json) {
+          console.log(JSON.stringify(peers, null, 2));
+          await node.stop();
+          return;
+        }
+
+        // Display peers in a table
+        const table = new Table({
+          head: [
+            chalk.bold('Peer ID'),
+            chalk.bold('Providers'),
+            chalk.bold('Input $/1M'),
+            chalk.bold('Output $/1M'),
+            chalk.bold('Reputation'),
+            chalk.bold('Load'),
+          ],
+          colWidths: [16, 18, 14, 14, 12, 10],
+        });
+
+        for (const peer of peers) {
+          const reputation = peer.reputationScore ?? 0;
+          const repLabel = `${reputation}%`;
+          const repColor = getReputationColor(reputation);
+
+          const load = peer.currentLoad !== undefined && peer.maxConcurrency !== undefined
+            ? `${peer.currentLoad}/${peer.maxConcurrency}`
+            : chalk.dim('n/a');
+
+          table.push([
+            chalk.dim(peer.peerId.slice(0, 12) + '...'),
+            peer.providers.join(', '),
+            peer.defaultInputUsdPerMillion !== undefined
+              ? `$${peer.defaultInputUsdPerMillion.toFixed(2)}`
+              : chalk.dim('n/a'),
+            peer.defaultOutputUsdPerMillion !== undefined
+              ? `$${peer.defaultOutputUsdPerMillion.toFixed(2)}`
+              : chalk.dim('n/a'),
+            repColor(repLabel),
+            load,
+          ]);
+        }
+
+        console.log('');
+        console.log(table.toString());
+        console.log('');
+      } catch (err) {
+        spinner.fail(chalk.red(`Discovery failed: ${(err as Error).message}`));
+      }
+
+      await node.stop();
+    });
+}
