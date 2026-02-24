@@ -1,13 +1,13 @@
 import { EventEmitter } from 'node:events';
 import { randomBytes } from 'node:crypto';
 import type { DashboardConfig } from './types.js';
-import { DHTNode, DEFAULT_DHT_CONFIG, topicToInfoHash, providerTopic } from 'antseed-node/discovery';
-import { DHTHealthMonitor } from 'antseed-node/discovery';
-import { DEFAULT_HEALTH_THRESHOLDS } from 'antseed-node/discovery';
-import { HttpMetadataResolver } from 'antseed-node/discovery';
-import { mergeBootstrapNodes, OFFICIAL_BOOTSTRAP_NODES, toBootstrapConfig, parseBootstrapList } from 'antseed-node/discovery';
-import { toPeerId } from 'antseed-node';
-import type { PeerMetadata } from 'antseed-node';
+import { DHTNode, DEFAULT_DHT_CONFIG, topicToInfoHash, providerTopic } from '@antseed/node/discovery';
+import { DHTHealthMonitor } from '@antseed/node/discovery';
+import { DEFAULT_HEALTH_THRESHOLDS } from '@antseed/node/discovery';
+import { HttpMetadataResolver } from '@antseed/node/discovery';
+import { mergeBootstrapNodes, OFFICIAL_BOOTSTRAP_NODES, toBootstrapConfig, parseBootstrapList } from '@antseed/node/discovery';
+import { toPeerId } from '@antseed/node';
+import type { PeerMetadata } from '@antseed/node';
 
 export interface NetworkPeer {
   peerId: string;
