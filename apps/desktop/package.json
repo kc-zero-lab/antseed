@@ -21,7 +21,11 @@
     "dev:renderer": "vite",
     "dev:main": "tsc -p tsconfig.main.json --watch --preserveWatchOutput",
     "dev:electron": "wait-on tcp:5174 file:dist/main/main.js file:dist/main/preload.cjs && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron .",
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@walletconnect/ethereum-provider": "^2.17.0",
@@ -34,6 +38,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "concurrently": "^9.0.1",
     "cross-env": "^7.0.3",
+    "electron-builder": "^25.1.8",
     "typescript": "^5.6.0",
     "vite": "^6.0.0",
     "wait-on": "^8.0.1"

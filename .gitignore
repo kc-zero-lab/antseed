@@ -27,3 +27,6 @@ coverage/
 
 # Runtime native module markers
 .runtime-native-meta.json
+
+# Electron builder output
+release/

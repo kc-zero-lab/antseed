@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { AntMarkFull } from '../components/AntMark'
 import Footer from '../components/Footer'
+import { RELEASES_URL } from '../config'
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
@@ -232,6 +233,54 @@ function Roadmap() {
   )
 }
 
+function DownloadDesktop() {
+  const platforms = [
+    { name: 'macOS', arch: 'Apple Silicon & Intel', ext: '.dmg', icon: '\u2318' },
+    { name: 'Windows', arch: 'x64 & ARM64', ext: '.exe', icon: '\u229E' },
+    { name: 'Linux', arch: 'x64 & ARM64', ext: '.AppImage', icon: '\u2726' },
+  ]
+
+  return (
+    <section id="download" className="py-[120px] px-5 sm:px-10 max-w-[1200px] mx-auto border-t border-[rgba(61,255,162,0.03)]">
+      <div className="reveal">
+        <div className="font-mono text-[10px] text-accent tracking-[4px] uppercase mb-9 opacity-50">Download</div>
+        <div className="text-[28px] font-bold tracking-[-0.5px] mb-2 leading-[1.3]">
+          AntSeed Desktop
+        </div>
+        <div className="text-[15px] text-text-dim max-w-[640px] leading-[2] mb-12">
+          A native app for seeding and connecting to the AntSeed network. Manage providers, monitor peers, and route requests — all from one interface.
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px reveal">
+        {platforms.map((p) => (
+          <a
+            key={p.name}
+            href={RELEASES_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-bg-2 p-10 relative hover:bg-bg-3 transition-colors no-underline group"
+          >
+            <div className="absolute top-5 right-6 text-[48px] font-bold text-accent opacity-[0.07]">{p.icon}</div>
+            <h3 className="font-mono text-[13px] font-medium text-accent tracking-[1px] mb-2 group-hover:underline">{p.name}</h3>
+            <p className="text-sm text-text-dim leading-[1.8] mb-1">{p.arch}</p>
+            <p className="text-xs text-text-muted font-mono">{p.ext}</p>
+          </a>
+        ))}
+      </div>
+      <div className="reveal mt-6 text-center">
+        <a
+          href={RELEASES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-xs text-text-muted hover:text-accent transition-colors"
+        >
+          All releases on GitHub &rarr;
+        </a>
+      </div>
+    </section>
+  )
+}
+
 function CTASection() {
   return (
     <div className="py-[120px] px-5 sm:px-10 text-center border-t border-[rgba(61,255,162,0.03)]">
@@ -271,6 +320,7 @@ export default function Home() {
       <SupplySources />
       <ThreeMarkets />
       <Roadmap />
+      <DownloadDesktop />
       <CTASection />
       <Footer />
     </div>
