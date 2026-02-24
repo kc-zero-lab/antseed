@@ -26,7 +26,7 @@ function useReveal() {
 function InstallBox() {
   const [copied, setCopied] = useState(false)
   const handleCopy = () => {
-    navigator.clipboard.writeText('npm install -g antseed-cli')
+    navigator.clipboard.writeText('npm install -g @antseed/cli')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -36,7 +36,7 @@ function InstallBox() {
       className="inline-flex items-center gap-3 bg-bg-2 border border-border rounded-md px-6 py-3 font-mono text-sm cursor-pointer hover:border-accent transition-colors"
     >
       <span className="text-accent">$</span>
-      <span className="text-text">npm install -g antseed-cli</span>
+      <span className="text-text">npm install -g @antseed/cli</span>
       <span className={`text-xs ml-4 transition-colors ${copied ? 'text-accent' : 'text-text-muted hover:text-accent'}`}>
         {copied ? 'copied!' : 'copy'}
       </span>

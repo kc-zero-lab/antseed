@@ -270,7 +270,7 @@ function Install() {
       <TerminalBlock label="install" className="my-4">
         <div className="text-text-dim">
           <span className="text-text-muted">$ </span>
-          <span className="text-accent/70">npm install -g antseed-cli</span>
+          <span className="text-accent/70">npm install -g @antseed/cli</span>
         </div>
       </TerminalBlock>
       <P>Verify the installation:</P>
@@ -287,8 +287,11 @@ function Install() {
           ['@antseed/cli', 'CLI tool for running a node'],
           ['@antseed/node', 'Protocol SDK (core library)'],
           ['@antseed/provider-core', 'Base provider utilities and HTTP relay'],
-          ['antseed-provider-anthropic', 'Official Anthropic provider plugin'],
           ['@antseed/router-core', 'Peer scoring and routing utilities'],
+          ['@antseed/provider-anthropic', 'Anthropic API key provider'],
+          ['@antseed/provider-claude-code', 'Claude Code keychain provider'],
+          ['@antseed/router-local-proxy', 'Local HTTP proxy router for CLI tools'],
+          ['@antseed/router-local-chat', 'Desktop chat router'],
         ]}
       />
     </div>
@@ -340,10 +343,10 @@ function Config() {
       <H3>## Buying AI Services</H3>
       <TerminalBlock label="connect" className="my-4">
         <div className="space-y-1 text-text-dim">
-          <div><span className="text-text-muted">$ </span><span className="text-accent/70">antseed connect --router claude-code</span></div>
-          <div className="text-text-muted">Discovering peers for: anthropic</div>
-          <div className="text-text-muted">Found 12 sellers, connected to best peer</div>
-          <div className="text-text-muted">Proxy ready on localhost:8377</div>
+          <div><span className="text-text-muted">$ </span><span className="text-accent/70">antseed connect --router local-proxy</span></div>
+          <div className="text-text-muted">Router "Local Proxy" loaded</div>
+          <div className="text-text-muted">Connected to P2P network</div>
+          <div className="text-text-muted">Proxy listening on http://localhost:8377</div>
         </div>
       </TerminalBlock>
       <P>
@@ -369,10 +372,20 @@ function Config() {
       />
       <H3>## Authentication</H3>
       <P>
-        Provider plugins authenticate with their upstream AI service using API keys.
-        Keys are stored locally and never leave the seller's machine. Configure your
-        API key in the provider plugin settings or via the <Code>ANTHROPIC_API_KEY</Code> environment variable.
+        Provider plugins authenticate with their upstream AI service. Credentials
+        are stored locally and never leave the seller's machine. Authentication methods
+        depend on the provider plugin:
       </P>
+      <Table
+        headers={['Provider', 'Auth Method']}
+        rows={[
+          ['anthropic', 'API key via ANTHROPIC_API_KEY env var'],
+          ['claude-code', 'OAuth tokens from Claude Code keychain (automatic)'],
+          ['claude-oauth', 'OAuth access/refresh token pair'],
+          ['openrouter', 'API key via OPENROUTER_API_KEY env var'],
+          ['local-llm', 'No auth needed (local Ollama/llama.cpp)'],
+        ]}
+      />
     </div>
   )
 }
@@ -1044,21 +1057,23 @@ function CreatePlugin() {
         Plugins are npm packages that export a provider or router object.
         Use the templates in the protocol repository as a starting point.
       </P>
-      <H3>## From Template</H3>
+      <H3>## From the CLI</H3>
       <TerminalBlock label="scaffold" className="my-4">
         <div className="space-y-1 text-text-dim">
-          <div className="text-text-muted"># Provider plugin (sell AI services)</div>
-          <div><span className="text-text-muted">$ </span><span className="text-accent/70">cp -r templates/provider-plugin my-provider</span></div>
-          <div><span className="text-text-muted">$ </span><span className="text-accent/70">cd my-provider && npm install && npm run verify</span></div>
-          <div className="mt-2 text-text-muted"># Router plugin (proxy requests)</div>
-          <div><span className="text-text-muted">$ </span><span className="text-accent/70">cp -r templates/router-plugin my-router</span></div>
-          <div><span className="text-text-muted">$ </span><span className="text-accent/70">cd my-router && npm install && npm run verify</span></div>
+          <div className="text-text-muted"># Interactive scaffold — creates a ready-to-build project</div>
+          <div><span className="text-text-muted">$ </span><span className="text-accent/70">antseed plugin create</span></div>
+          <div className="text-text-muted">Plugin name: my-provider</div>
+          <div className="text-text-muted">Plugin type (provider/router): provider</div>
+          <div className="text-text-muted">Display name: My Provider</div>
+          <div className="text-text-muted">Description: Custom provider plugin</div>
+          <div className="mt-2 text-text-muted"># Then build and test</div>
+          <div><span className="text-text-muted">$ </span><span className="text-accent/70">cd antseed-provider-my-provider && npm install && npm test</span></div>
         </div>
       </TerminalBlock>
       <H3>## Naming Convention</H3>
       <P>
-        Provider plugins: <Code>antseed-provider-*</Code>. Router plugins: <Code>antseed-router-*</Code>.
-        Publish to npm and install with <Code>antseed init</Code>.
+        Provider plugins: <Code>@antseed/provider-*</Code>. Router plugins: <Code>@antseed/router-*</Code>.
+        Publish to npm and install with <Code>antseed plugin add &lt;package&gt;</Code>.
       </P>
       <H3>## Verification</H3>
       <P>
