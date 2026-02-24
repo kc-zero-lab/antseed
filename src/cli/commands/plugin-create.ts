@@ -14,7 +14,7 @@ interface PluginScaffoldOptions {
 function generatePackageJson(opts: PluginScaffoldOptions): string {
   return JSON.stringify(
     {
-      name: `antseed-${opts.type}-${opts.name}`,
+      name: `@antseed/${opts.type}-${opts.name}`,
       version: '0.1.0',
       description: opts.description,
       type: 'module',

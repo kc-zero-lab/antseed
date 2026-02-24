@@ -179,7 +179,7 @@ export function registerConnectCommand(program: Command): void {
         try {
           const plugin = await loadRouterPlugin(instance.package)
           const runtimeEnv = buildRouterRuntimeEnvFromBuyerConfig(effectiveBuyerConfig)
-          const pluginConfig = buildPluginConfig(plugin.configKeys ?? plugin.configSchema ?? [], runtimeEnv, instance.config as Record<string, string>)
+          const pluginConfig = buildPluginConfig(plugin.configSchema ?? plugin.configKeys ?? [], runtimeEnv, instance.config as Record<string, string>)
           router = await plugin.createRouter(pluginConfig)
           spinner.succeed(chalk.green(`Router "${plugin.displayName}" loaded`))
           toolHints = (plugin as any).TOOL_HINTS ?? []
@@ -192,7 +192,7 @@ export function registerConnectCommand(program: Command): void {
         try {
           const plugin = await loadRouterPlugin(options.router)
           const runtimeEnv = buildRouterRuntimeEnvFromBuyerConfig(effectiveBuyerConfig)
-          const pluginConfig = buildPluginConfig(plugin.configKeys ?? plugin.configSchema ?? [], runtimeEnv)
+          const pluginConfig = buildPluginConfig(plugin.configSchema ?? plugin.configKeys ?? [], runtimeEnv)
           router = await plugin.createRouter(pluginConfig)
           spinner.succeed(chalk.green(`Router "${plugin.displayName}" loaded`))
           toolHints = (plugin as any).TOOL_HINTS ?? []

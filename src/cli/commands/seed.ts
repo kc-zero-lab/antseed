@@ -143,7 +143,7 @@ export function registerSeedCommand(program: Command): void {
         try {
           const plugin = await loadProviderPlugin(instance.package)
           const runtimeEnv = buildSellerPluginRuntimeEnv(effectiveSellerConfig, plugin.name)
-          const pluginConfig = buildPluginConfig(plugin.configKeys ?? plugin.configSchema ?? [], runtimeEnv, instance.config as Record<string, string>)
+          const pluginConfig = buildPluginConfig(plugin.configSchema ?? plugin.configKeys ?? [], runtimeEnv, instance.config as Record<string, string>)
           provider = await plugin.createProvider(pluginConfig)
           if (provider.init) {
             spinner.text = 'Validating credentials...'
@@ -161,7 +161,7 @@ export function registerSeedCommand(program: Command): void {
           const configProvider = config.providers.find(p => p.type === options.provider)
           const fileConfig = configProvider ? providerConfigToEnv(configProvider) : {}
           const runtimeEnv = buildSellerPluginRuntimeEnv(effectiveSellerConfig, options.provider as string)
-          const envAndRuntimeConfig = buildPluginConfig(plugin.configKeys ?? plugin.configSchema ?? [], runtimeEnv)
+          const envAndRuntimeConfig = buildPluginConfig(plugin.configSchema ?? plugin.configKeys ?? [], runtimeEnv)
           const pluginConfig = { ...fileConfig, ...envAndRuntimeConfig }
           provider = await plugin.createProvider(pluginConfig)
           if (provider.init) {

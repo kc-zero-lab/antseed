@@ -16,7 +16,7 @@ test('scaffoldPlugin creates provider project structure', async () => {
     })
 
     const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf-8')) as { name: string }
-    assert.equal(pkg.name, 'antseed-provider-test-provider')
+    assert.equal(pkg.name, '@antseed/provider-test-provider')
 
     const tsconfig = await readFile(join(dir, 'tsconfig.json'), 'utf-8')
     assert.ok(tsconfig.includes('NodeNext'))

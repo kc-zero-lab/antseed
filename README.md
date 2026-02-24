@@ -25,15 +25,16 @@ Antseed uses an open plugin ecosystem. Plugins are installed into `~/.antseed/pl
 **Providers** connect your node to an upstream AI API (seeder mode):
 
 ```bash
-antseed plugin add antseed-provider-anthropic
+antseed plugin add @antseed/provider-anthropic    # API key auth
+antseed plugin add @antseed/provider-claude-code   # Claude Code keychain auth
 antseed seed --provider anthropic
 ```
 
 **Routers** select peers and proxy requests (consumer mode):
 
 ```bash
-antseed plugin add antseed-router-claude-code
-antseed connect --router claude-code
+antseed plugin add @antseed/router-local-proxy
+antseed connect --router local-proxy
 ```
 
 Run `antseed init` to install all trusted plugins interactively.
@@ -123,7 +124,7 @@ Runtime-only overrides (do not write your config file):
 
 ```bash
 antseed seed --provider anthropic --input-usd-per-million 10 --output-usd-per-million 30
-antseed connect --router claude-code --max-input-usd-per-million 20 --max-output-usd-per-million 60
+antseed connect --router local-proxy --max-input-usd-per-million 20 --max-output-usd-per-million 60
 ```
 
 ## Settlement Runtime (Seeder)
@@ -153,7 +154,7 @@ Runtime behavior:
 - session finalizes -> exact on-chain split settlement (`seller payout + platform fee + buyer refund remainder`)
 - no receipts -> escrow refund path
 
-Provider middleware and agentic seeding are configured via provider plugin env keys (for Anthropic: `ANTSEED_SKILL_INJECT`, `ANTSEED_SKILL_TRIM_REGEX`, `ANTSEED_ENABLE_AGENTIC_SEEDER`).
+Provider-specific options are configured via each plugin's config schema (see `antseed plugin add --help`).
 
 ## Development
 
