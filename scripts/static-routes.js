@@ -33,6 +33,7 @@ if (existsSync(join(dist, 'logo.svg'))) {
 const src = join(newDir, 'index.html')
 
 const docsSections = [
+  'lightpaper',
   'intro', 'install', 'config',
   'overview', 'discovery', 'transport', 'metering', 'payments', 'reputation',
   'skills', 'create-skill',

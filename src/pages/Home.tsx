@@ -67,7 +67,7 @@ function Hero() {
         </p>
 
         <div className="flex gap-3 justify-center flex-wrap opacity-0 animate-fade-up-4">
-          <Link to="/lightpaper" className="font-mono text-xs font-medium px-7 py-3 bg-accent text-bg rounded-md transition-colors hover:bg-accent-dim no-underline tracking-[1px]">
+          <Link to="/docs/lightpaper" className="font-mono text-xs font-medium px-7 py-3 bg-accent text-bg rounded-md transition-colors hover:bg-accent-dim no-underline tracking-[1px]">
             Light Paper
           </Link>
           <Link to="/docs" className="font-mono text-xs font-medium px-7 py-3 bg-transparent text-text-dim border border-[rgba(61,255,162,0.09)] rounded-md hover:border-accent hover:text-text transition-all no-underline tracking-[1px]">
@@ -244,7 +244,7 @@ function CTASection() {
           <Link to="/docs" className="font-mono text-xs font-medium px-7 py-3 bg-accent text-bg rounded-md transition-colors hover:bg-accent-dim no-underline tracking-[1px]">
             Get Started
           </Link>
-          <Link to="/lightpaper" className="font-mono text-xs font-medium px-7 py-3 bg-transparent text-text-dim border border-[rgba(61,255,162,0.09)] rounded-md hover:border-accent hover:text-text transition-all no-underline tracking-[1px]">
+          <Link to="/docs/lightpaper" className="font-mono text-xs font-medium px-7 py-3 bg-transparent text-text-dim border border-[rgba(61,255,162,0.09)] rounded-md hover:border-accent hover:text-text transition-all no-underline tracking-[1px]">
             Light Paper
           </Link>
         </div>

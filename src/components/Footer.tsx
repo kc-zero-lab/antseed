@@ -10,7 +10,7 @@ export default function Footer() {
       <div className="flex gap-6">
         <Link to="/docs" className="font-mono text-[11px] text-text-muted tracking-[1px] no-underline hover:text-text transition-colors">Docs</Link>
         <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="font-mono text-[11px] text-text-muted tracking-[1px] no-underline hover:text-text transition-colors">GitHub</a>
-        <Link to="/lightpaper" className="font-mono text-[11px] text-text-muted tracking-[1px] no-underline hover:text-text transition-colors">Light Paper</Link>
+        <Link to="/docs/lightpaper" className="font-mono text-[11px] text-text-muted tracking-[1px] no-underline hover:text-text transition-colors">Light Paper</Link>
         <a href="https://x.com/antseedai" target="_blank" rel="noopener noreferrer" className="font-mono text-[11px] text-text-muted tracking-[1px] no-underline hover:text-text transition-colors">Twitter</a>
       </div>
     </footer>

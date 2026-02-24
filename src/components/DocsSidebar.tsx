@@ -8,6 +8,12 @@ interface DocsSidebarProps {
 
 const sections = [
   {
+    heading: '',
+    items: [
+      { id: 'lightpaper', label: 'Light Paper' },
+    ],
+  },
+  {
     heading: 'Getting Started',
     items: [
       { id: 'intro', label: 'Introduction' },
@@ -55,9 +61,11 @@ export default function DocsSidebar({ activeSection, mobileOpen, onMobileClose }
     <div className="space-y-5 py-4">
       {sections.map((group) => (
         <div key={group.heading}>
-          <div className="text-[11px] font-medium text-text-muted uppercase tracking-wider mb-1.5 px-3">
-            {group.heading}
-          </div>
+          {group.heading && (
+            <div className="text-[11px] font-medium text-text-muted uppercase tracking-wider mb-1.5 px-3">
+              {group.heading}
+            </div>
+          )}
           {group.items.map((item) => (
             <Link
               key={item.id}

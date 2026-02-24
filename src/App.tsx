@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import Nav from './components/Nav'
 import Home from './pages/Home'
-import LightPaper from './pages/LightPaper'
 import Docs from './pages/Docs'
 import NotFound from './pages/NotFound'
 
@@ -14,7 +13,7 @@ function App() {
         <Nav />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/lightpaper" element={<LightPaper />} />
+          <Route path="/lightpaper" element={<Navigate to="/docs/lightpaper" replace />} />
           <Route path="/docs" element={<Navigate to="/docs/intro" replace />} />
           <Route path="/docs/:section" element={<Docs />} />
           <Route path="*" element={<NotFound />} />

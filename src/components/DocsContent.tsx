@@ -49,6 +49,159 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
   )
 }
 
+function LightPaper() {
+  return (
+    <div>
+      <H2># Light Paper</H2>
+      <P>
+        <em className="text-text-muted not-italic font-mono text-[11px] tracking-[2px] uppercase">February 2026</em>
+      </P>
+
+      <H3>## The Problem</H3>
+      <P>
+        When a human operates an AI agent, they are locked into one provider's pricing, rate limits, content policies, uptime, and whatever capabilities that provider chooses to offer. If that provider raises prices, they pay more. If the provider has an outage, their AI goes blind. If the provider changes what the model is willing to say, their application loses capabilities overnight.
+      </P>
+      <P>
+        This is not how commodity markets work. Electricity, bandwidth, and compute are all fungible resources traded through competitive markets. AI inference is functionally the same &mdash; a request goes in, tokens come out &mdash; yet it is sold through closed, single-vendor channels with no price competition, no portability, and no redundancy.
+      </P>
+      <P>
+        The problem takes on a new dimension with AI agents. An agent can technically switch between API providers &mdash; but it is choosing from a short list of walled gardens, each with its own account, billing, and terms. What agents lack is an open market of intelligence: a peer network where they can discover AI services by capability, evaluate providers by reputation, delegate tasks to specialists, and compose expertise from multiple sources on the fly.
+      </P>
+
+      <H3>## AntSeed</H3>
+      <P>
+        AntSeed is a communication protocol for peer-to-peer AI services. Anyone can provide AI services &mdash; from raw model inference to skilled agents and agentic workflows &mdash; and anyone can consume them, directly, with no company in the middle.
+      </P>
+      <P>
+        The protocol serves three markets that build on each other: commodity inference, where providers compete on price to serve the same models; skilled inference, where providers compete on outcomes and reputation for specialized capabilities; and agent-to-agent commerce, where autonomous machines discover, evaluate, and pay for AI services without human involvement.
+      </P>
+      <P>
+        A seller joins the network by providing AI services &mdash; a local Mac mini running ollama, an API access tunneling through a set of skills, an agent with marketing expertise. A buyer defines what they need: inference, a task, a price ceiling, a quality threshold. The protocol router matches them to the best available peer, handles payment, and delivers the result. The buyer's existing tools work without modification.
+      </P>
+      <P>
+        The protocol does not care what happens between request and response. As a neutral transport layer, it facilitates encrypted peer-to-peer communication, similar to how TCP/IP routes packets without inspecting the payload. To the protocol, all providers are the same: a request went in, a response came out, both confirmed, peer to peer, settlement happened.
+      </P>
+      <P>
+        Every seller on the network declares at least one Skill &mdash; a modular package of instructions and expertise that defines what they deliver. Skills are what buyers search for, what reputation accrues to, and what agents already understand how to discover and evaluate.
+      </P>
+
+      <H3>## Three Core Use Cases</H3>
+      <P>
+        AntSeed is one protocol that naturally supports three use cases. Each builds on the one before it. All three share the same discovery, routing, reputation, and settlement mechanisms.
+      </P>
+      <P>
+        <strong className="text-text/70">1. Commodity Inference.</strong> A seller has a model or an API access. A buyer needs an AI service. They trade directly. No platform in the middle. Price set by open competition: when dozens of sellers offer the same model, margins compress toward zero and the buyer pays near-cost. The supply is immediately diverse &mdash; wholesale API resellers, self-hosted GPU operators, inference farms, edge providers, and privacy nodes all competing on price, speed, and reliability.
+      </P>
+      <P>
+        <strong className="text-text/70">2. Differentiated AI Services.</strong> Same protocol, but the seller equips their model with Skills &mdash; modular packages of domain expertise and workflows. A Skill transforms a general-purpose model into a specialist. The buyer does not care what is inside. They care about the result and the reputation. The network becomes a directory of Skilled AI Services: search by capability, sort by reputation, get a result.
+      </P>
+      <P>
+        <strong className="text-text/70">3. Agent-to-Agent Commerce.</strong> Same protocol, but now the buyers are also machines. An autonomous agent holds credits, discovers providers by capability, evaluates reputation, consumes services, and settles payment &mdash; without human involvement. The Skill taxonomy is what makes this work &mdash; an agent queries the network for a specific capability and gets back ranked providers.
+      </P>
+
+      <H3>## Why Decentralized</H3>
+      <P>
+        Decentralization is not the value proposition. Cheap, reliable, uncensorable AI access is. But decentralization is the mechanism that makes those properties durable.
+      </P>
+      <P>
+        A centralized aggregator can be pressured by upstream providers, shut down by regulators, acquired by a competitor, or disrupted by business failure. When that happens, every customer is affected by one decision from one company. AntSeed has no company in the middle. To block access to any model on the network, you would need to shut down every individual provider who serves it.
+      </P>
+      <P>
+        Communication between peers is encrypted end-to-end. There is no intermediary server collecting all requests from all users. For providers running in Trusted Execution Environments, not even the provider operator can see the prompts. Privacy is a structural property of the architecture, not a policy promise from a company.
+      </P>
+
+      <H3>## Why Now</H3>
+      <P>
+        <strong className="text-text/70">Models commoditized.</strong> Claude, GPT, Gemini, DeepSeek, Llama &mdash; converging in capability and racing to zero on price. Open-weight models now compete with closed APIs on most tasks. When models become interchangeable, the access layer becomes the competitive battleground.
+      </P>
+      <P>
+        <strong className="text-text/70">Agents shipped.</strong> 2025 was the year agents went from demos to products. Millions of agents are about to need inference &mdash; programmatically, autonomously, at scale.
+      </P>
+      <P>
+        <strong className="text-text/70">Skills emerged as a standard.</strong> Agent Skills &mdash; modular packages of instructions and expertise &mdash; are becoming the way agents gain specialized capabilities.
+      </P>
+      <P>
+        <strong className="text-text/70">The aggregator model proved demand.</strong> OpenRouter, Together.ai, and others proved developers want multi-model access through a single endpoint. They validated the demand. AntSeed removes the centralized bottleneck.
+      </P>
+
+      <H3>## The BitTorrent vs Netflix Objection</H3>
+      <P>
+        When people hear "P2P network," the first objection is: Netflix killed BitTorrent. People prefer convenience. This is true when the consumer is a human sitting on a couch. It is wrong when the consumer is a program.
+      </P>
+      <P>
+        An AI agent does not care about UI. It does not want a dashboard, a setup wizard, or a billing page. An agent cares about four things: price, reliability, access, and capability. These are exactly the properties a decentralized protocol optimizes for.
+      </P>
+      <P>
+        And for humans who want a store: white-label providers can build polished products on top of AntSeed. Netflix was built on TCP/IP. Nobody argues TCP/IP was the wrong choice because it lacks a user interface.
+      </P>
+
+      <H3>## Supply: Who Provides</H3>
+      <P>
+        The protocol is provider-agnostic. It does not care how a seller fulfills a request. It cares that a response came back, the receipt verified, and quality was consistent.
+      </P>
+      <P>
+        <strong className="text-text/70">Skilled Inference.</strong> Anyone with API access on a frontier model service can offer a specialized agent to the network. Zero hardware investment. Everyone in the world is a potential provider.
+      </P>
+      <P>
+        <strong className="text-text/70">Self-hosted operators.</strong> A gamer with a GPU, a developer with a Mac Mini running open-weight models. No terms-of-service issues. Cost basis is electricity and hardware depreciation.
+      </P>
+      <P>
+        <strong className="text-text/70">Privacy providers</strong> run inference inside Trusted Execution Environments where not even the operator can see prompts. <strong className="text-text/70">Custom model operators</strong> serve use cases that cannot exist on centralized platforms. <strong className="text-text/70">Inference farms and edge operators</strong> provide always-on capacity &mdash; farms set the global floor price, edge nodes offer sub-100ms latency at premium rates.
+      </P>
+
+      <H3>## Demand: Who Buys</H3>
+      <P>
+        <strong className="text-text/70">Builders and agents seeking better economics.</strong> Multi-AI-services access with lower fees, more sellers competing on price, capabilities, and access to services centralized platforms do not carry.
+      </P>
+      <P>
+        <strong className="text-text/70">Builders and agents seeking better output.</strong> Skilled inference, improved prompting, specialized workflows.
+      </P>
+      <P>
+        <strong className="text-text/70">Agents in underserved markets.</strong> Frontier model access at competitive rates where subscriptions are unaffordable or payment methods are not accepted.
+      </P>
+      <P>
+        <strong className="text-text/70">Privacy-sensitive organizations.</strong> Law firms, healthcare, finance, journalists who cannot use cloud AI due to confidentiality. TEE-verified providers open this market.
+      </P>
+
+      <H3>## Economic Incentives</H3>
+      <P>
+        <strong className="text-text/70">Reputation requires stake.</strong> Providers commit economic stake to participate. Stake is collateral (slashable), routing signal (more stake = more trust = more traffic), and Sybil resistance.
+      </P>
+      <P>
+        <strong className="text-text/70">Quality enforced economically.</strong> Every transaction is independently verifiable by both parties. Disputes trigger automatic buyer protection. Poor-quality providers face progressive consequences: warnings, stake slashing, routing exclusion.
+      </P>
+      <P>
+        <strong className="text-text/70">Low barrier to entry.</strong> Stablecoin on-ramps and bootstrap rewards ensure new participants can join without significant upfront cost.
+      </P>
+
+      <H3>## How It Works</H3>
+      <P>
+        <strong className="text-text/70">Discovery.</strong> Sellers announce their Skills &mdash; models, capabilities, pricing, region &mdash; to the network. Buyers search by what they need. No central directory.
+      </P>
+      <P>
+        <strong className="text-text/70">Transport.</strong> Buyer and seller communicate directly over peer-to-peer connections. No intermediary sees the traffic. Compatible with existing AI API formats.
+      </P>
+      <P>
+        <strong className="text-text/70">Metering.</strong> Both sides independently verify what was delivered. If their measurements diverge significantly, the transaction is disputed and the buyer is protected.
+      </P>
+      <P>
+        <strong className="text-text/70">Settlement.</strong> Buyers commit funds before a session. Requests flow freely during the session. At the end, one settlement transaction resolves everything.
+      </P>
+      <P>
+        <strong className="text-text/70">Routing.</strong> The buyer's software scores available providers on reputation, capability match, speed, price, and uptime. On failure, it automatically switches to the next-best provider. Because AI APIs are stateless, these switches are invisible to the application.
+      </P>
+
+      <H3>## Roadmap</H3>
+      <P>
+        <strong className="text-text/70">Phase 1 &mdash; The Protocol.</strong> Peer-to-peer protocol goes live. Skilled inference and self-hosted inference serve builders and agents. Settlement and reputation operational. Differentiated services follow with capability-based discovery and per-capability reputation. Agent-to-agent commerce emerges as autonomous agents use the network for inference and for hiring other agents.
+      </P>
+      <P>
+        <strong className="text-text/70">Phase 2 &mdash; Price Index &amp; Derivatives.</strong> Every verified transaction is a price data point. Aggregated across thousands of sessions, these produce the AntSeed Compute Index &mdash; a real-time, market-driven reference price for AI services. Futures contracts on the Compute Index let startups hedge AI costs and providers sell forward capacity.
+      </P>
+    </div>
+  )
+}
+
 function Intro() {
   return (
     <div>
@@ -131,10 +284,11 @@ function Install() {
       <Table
         headers={['Package', 'Description']}
         rows={[
-          ['antseed-cli', 'CLI tool for running a node'],
-          ['antseed-node', 'Protocol SDK (core library)'],
+          ['@antseed/cli', 'CLI tool for running a node'],
+          ['@antseed/node', 'Protocol SDK (core library)'],
+          ['@antseed/provider-core', 'Base provider utilities and HTTP relay'],
           ['antseed-provider-anthropic', 'Official Anthropic provider plugin'],
-          ['antseed-router-claude-code', 'Official Claude Code / Aider router plugin'],
+          ['@antseed/router-core', 'Peer scoring and routing utilities'],
         ]}
       />
     </div>
@@ -178,15 +332,41 @@ function Config() {
           <div className="text-text-muted">Seeding capacity...</div>
         </div>
       </TerminalBlock>
+      <P>
+        You can also use <Code>--instance &lt;id&gt;</Code> to use a configured plugin instance,
+        or override pricing at runtime with <Code>--input-usd-per-million</Code> and{' '}
+        <Code>--output-usd-per-million</Code>.
+      </P>
       <H3>## Buying AI Services</H3>
       <TerminalBlock label="connect" className="my-4">
         <div className="space-y-1 text-text-dim">
           <div><span className="text-text-muted">$ </span><span className="text-accent/70">antseed connect --router claude-code</span></div>
           <div className="text-text-muted">Discovering peers for: anthropic</div>
           <div className="text-text-muted">Found 12 sellers, connected to best peer</div>
-          <div className="text-text-muted">Proxy ready</div>
+          <div className="text-text-muted">Proxy ready on localhost:8377</div>
         </div>
       </TerminalBlock>
+      <P>
+        The buyer proxy listens on <Code>localhost:8377</Code> by default.
+        Your existing tools (Claude Code, Aider, etc.) point to this proxy instead of
+        the upstream API. The router handles peer selection and failover transparently.
+      </P>
+      <H3>## Configuration File</H3>
+      <P>
+        Configuration is stored at <Code>~/.antseed/config.json</Code>. Key sections:
+      </P>
+      <Table
+        headers={['Section', 'Description']}
+        rows={[
+          ['identity', 'Display name and wallet address'],
+          ['providers', 'Configured provider API keys and endpoints'],
+          ['seller', 'Reserve floor, max concurrent buyers, pricing, enabled providers'],
+          ['buyer', 'Preferred providers, max pricing, min peer reputation, proxy port'],
+          ['payments', 'Payment method, platform fee rate, chain config (Base)'],
+          ['network', 'Bootstrap nodes'],
+          ['plugins', 'Installed plugin packages'],
+        ]}
+      />
       <H3>## Authentication</H3>
       <P>
         Provider plugins authenticate with their upstream AI service using API keys.
@@ -315,18 +495,20 @@ function Discovery() {
       <Table
         headers={['Dimension', 'Weight', 'Description']}
         rows={[
-          ['Price', '0.35', 'Lower price scores higher'],
-          ['Capacity', '0.25', 'More available capacity scores higher'],
-          ['Latency', '0.25', 'Lower latency scores higher (15s baseline)'],
-          ['Reputation', '0.15', 'Higher reputation scores higher'],
+          ['Price', '0.30', 'Lower price scores higher (inverted min-max)'],
+          ['Latency', '0.25', 'Lower latency scores higher (EMA-based)'],
+          ['Capacity', '0.20', 'More available capacity scores higher'],
+          ['Reputation', '0.10', 'Higher reputation scores higher (0-100)'],
+          ['Freshness', '0.10', 'Recently seen peers score higher'],
+          ['Reliability', '0.05', 'Lower failure rate and streak scores higher'],
         ]}
       />
       <P>
-        Selection strategies include <Code>selectBestPeer</Code> (highest score),{' '}
-        <Code>rankPeers</Code> (sorted by score), and <Code>selectDiversePeers</Code> (geographic diversity).
+        All factors are min-max normalized across the eligible candidate pool.
+        Peers below <Code>minPeerReputation</Code> (default: 50) are excluded before scoring.
+        Peers in a failure cooldown (exponential backoff) are also excluded.
       </P>
       <P>
-        <strong className="text-text/70">Note:</strong> Router plugins may use different weights.
         Buyers can filter by capability, Skill, minimum reputation, and price ceiling.
       </P>
     </div>
@@ -525,8 +707,9 @@ sellerPayoutUSD = totalCostUSD - protocolFeeUSD`}</pre>
       <H3>## Wallet</H3>
       <P>
         EVM wallets are derived from the node's Ed25519 identity key.
-        USDC balances use 6-decimal precision. The wallet is stored in the system keychain
-        (via <Code>keytar</Code>) and tracks USDC balance and in-escrow amounts.
+        USDC balances use 6-decimal precision. The wallet tracks USDC balance
+        and in-escrow amounts. Manage funds via <Code>antseed deposit</Code>,{' '}
+        <Code>antseed withdraw</Code>, and <Code>antseed balance</Code>.
       </P>
     </div>
   )
@@ -558,20 +741,23 @@ function Reputation() {
         Scores are local only and not shared in Phase 1.
       </P>
       <H3>## Router Scoring Weights</H3>
-      <P>The official Claude Code router uses these weights for peer selection:</P>
+      <P>The <Code>@antseed/router-core</Code> default weights for peer selection:</P>
       <Table
         headers={['Factor', 'Weight']}
         rows={[
-          ['Price', '0.40'],
-          ['Latency', '0.30'],
+          ['Price', '0.30'],
+          ['Latency', '0.25'],
           ['Capacity', '0.20'],
           ['Reputation', '0.10'],
+          ['Freshness', '0.10'],
+          ['Reliability', '0.05'],
         ]}
       />
       <P>
         Minimum reputation filter: peers below <Code>minPeerReputation</Code> (default: 50)
-        are excluded before scoring. Every transaction is independently verifiable by both
-        parties. The cost of cheating always exceeds the benefit.
+        are excluded before scoring. Latency is tracked as an exponential moving average
+        (alpha: 0.3). Peers with consecutive failures enter an exponential backoff cooldown.
+        Every transaction is independently verifiable by both parties.
       </P>
       <H3>## Phase 2: DHT Attestations</H3>
       <P>
@@ -656,7 +842,7 @@ function CreateSkill() {
       </P>
       <H3>## Example: Legal Research Skill</H3>
       <TerminalBlock label="legal-research-provider.ts" className="my-4">
-        <pre className="text-text-dim text-xs">{`import { SkillMiddlewareProvider } from 'antseed-node'
+        <pre className="text-text-dim text-xs">{`import { SkillMiddlewareProvider } from '@antseed/node'
 import anthropicProvider from './my-anthropic-provider'
 
 const legalResearchProvider = new SkillMiddlewareProvider(
@@ -745,7 +931,7 @@ function ProviderApi() {
       </TerminalBlock>
       <H3>## Example: Anthropic Provider</H3>
       <TerminalBlock label="anthropic-provider.ts" className="my-4">
-        <pre className="text-text-dim text-xs">{`import type { Provider } from 'antseed-node'
+        <pre className="text-text-dim text-xs">{`import type { Provider } from '@antseed/node'
 import Anthropic from '@anthropic-ai/sdk'
 
 export default {
@@ -805,19 +991,22 @@ function RouterApi() {
         automatically switches to the next-best provider &mdash; because AI APIs are stateless,
         these switches are invisible to the application.
       </P>
-      <H3>## Official Router Weights</H3>
-      <P>The <Code>antseed-router-claude-code</Code> plugin scores peers with:</P>
+      <H3>## Default Scoring Weights</H3>
+      <P>The <Code>@antseed/router-core</Code> scores peers with:</P>
       <TerminalBlock label="scoring weights" className="my-4">
-        <pre className="text-text-dim text-xs">{`const WEIGHTS = {
-  price:      0.40,   // lower price scores higher
-  latency:    0.30,   // lower latency scores higher (EMA)
-  capacity:   0.20,   // more available capacity scores higher
-  reputation: 0.10,   // higher reputation scores higher
+        <pre className="text-text-dim text-xs">{`const DEFAULT_WEIGHTS = {
+  price:       0.30,   // lower price scores higher (inverted min-max)
+  latency:     0.25,   // lower latency scores higher (EMA)
+  capacity:    0.20,   // more available capacity scores higher
+  reputation:  0.10,   // higher reputation scores higher (0-100)
+  freshness:   0.10,   // recently seen peers score higher
+  reliability: 0.05,   // lower failure rate scores higher
 } as const;`}</pre>
       </TerminalBlock>
       <P>
         All factors are min-max normalized across the eligible candidate pool.
         Peers below <Code>minReputation</Code> (default: 50) are excluded before scoring.
+        Peers in failure cooldown (exponential backoff after 3 consecutive failures) are also excluded.
       </P>
       <H3>## Router Interface</H3>
       <TerminalBlock label="router interface" className="my-4">
@@ -890,9 +1079,16 @@ function Commands() {
           <div><span className="text-accent/60">antseed seed --provider &lt;name&gt;</span>         Sell AI services for a provider</div>
           <div><span className="text-accent/60">antseed connect --router &lt;name&gt;</span>        Buy AI services via a router plugin</div>
           <div><span className="text-accent/60">antseed status</span>                        Show node and network status</div>
+          <div><span className="text-accent/60">antseed config</span>                        Manage config file</div>
           <div><span className="text-accent/60">antseed browse</span>                        Browse available peers on the network</div>
+          <div><span className="text-accent/60">antseed peer</span>                          Query peer info</div>
+          <div><span className="text-accent/60">antseed profile</span>                       Manage node profiles</div>
           <div><span className="text-accent/60">antseed plugin</span>                        Manage plugins (add, remove, list)</div>
           <div><span className="text-accent/60">antseed dashboard</span>                     Launch the local web dashboard</div>
+          <div><span className="text-accent/60">antseed deposit</span>                       Deposit USDC into escrow</div>
+          <div><span className="text-accent/60">antseed withdraw</span>                      Withdraw USDC from escrow</div>
+          <div><span className="text-accent/60">antseed balance</span>                       Check USDC balance</div>
+          <div><span className="text-accent/60">antseed dev</span>                           Development mode</div>
         </div>
       </TerminalBlock>
     </div>
@@ -905,10 +1101,11 @@ function Flags() {
       <H2># Global Flags</H2>
       <TerminalBlock label="flags" className="my-4">
         <div className="space-y-2 text-text-dim text-xs">
-          <div><span className="text-accent/60">-c, --config &lt;path&gt;</span>  Path to config file</div>
-          <div><span className="text-accent/60">-v, --verbose</span>         Enable verbose logging</div>
-          <div><span className="text-accent/60">--version</span>             Show version</div>
-          <div><span className="text-accent/60">--help</span>                Show help</div>
+          <div><span className="text-accent/60">-c, --config &lt;path&gt;</span>     Path to config file (default: ~/.antseed/config.json)</div>
+          <div><span className="text-accent/60">--data-dir &lt;path&gt;</span>       Path to node identity/state directory (default: ~/.antseed)</div>
+          <div><span className="text-accent/60">-v, --verbose</span>            Enable verbose logging</div>
+          <div><span className="text-accent/60">--version</span>                Show version</div>
+          <div><span className="text-accent/60">--help</span>                   Show help</div>
         </div>
       </TerminalBlock>
     </div>
@@ -916,6 +1113,7 @@ function Flags() {
 }
 
 const sectionComponents: Record<string, () => JSX.Element> = {
+  lightpaper: LightPaper,
   intro: Intro,
   install: Install,
   config: Config,

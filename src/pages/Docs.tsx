@@ -6,6 +6,7 @@ import DocsContent from '../components/DocsContent'
 import Footer from '../components/Footer'
 
 const validSections = [
+  'lightpaper',
   'intro', 'install', 'config',
   'overview', 'discovery', 'transport', 'metering', 'payments', 'reputation',
   'skills', 'create-skill',
@@ -21,7 +22,9 @@ export default function Docs() {
     return <Navigate to="/docs/intro" replace />
   }
 
-  const sectionTitle = section.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  const sectionTitle = section === 'lightpaper'
+    ? 'Light Paper'
+    : section.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   return (
     <div className="min-h-screen flex flex-col pt-[73px]">
