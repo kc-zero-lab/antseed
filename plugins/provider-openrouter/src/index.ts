@@ -55,6 +55,7 @@ const plugin: AntseedProviderPlugin = {
     { key: 'ANTSEED_MODEL_PRICING_JSON', label: 'Model Pricing JSON', type: 'string', required: false, description: 'Per-model pricing JSON' },
     { key: 'ANTSEED_MAX_CONCURRENCY', label: 'Max Concurrency', type: 'number', required: false, default: 10, description: 'Max concurrent requests' },
     { key: 'ANTSEED_ALLOWED_MODELS', label: 'Allowed Models', type: 'string[]', required: false, description: 'Model allow-list' },
+    { key: 'OPENROUTER_PROVIDER', label: 'Provider', type: 'string', required: false, description: 'Force a specific upstream provider (e.g. Together, DeepInfra, Fireworks)' },
   ],
 
   createProvider(config: Record<string, string>): Provider {
@@ -81,6 +82,11 @@ const plugin: AntseedProviderPlugin = {
       ? config['ANTSEED_ALLOWED_MODELS'].split(',').map((s: string) => s.trim())
       : [];
 
+    const upstreamProvider = config['OPENROUTER_PROVIDER']?.trim();
+    const injectJsonFields: Record<string, unknown> | undefined = upstreamProvider
+      ? { provider: { only: [upstreamProvider] } }
+      : undefined;
+
     const tokenProvider = new StaticTokenProvider(apiKey);
 
     return new BaseProvider({
@@ -95,6 +101,7 @@ const plugin: AntseedProviderPlugin = {
         maxConcurrency,
         allowedModels,
         stripHeaderPrefixes: ['anthropic-', 'x-stainless-'],
+        ...(injectJsonFields ? { injectJsonFields } : {}),
       },
     });
   },

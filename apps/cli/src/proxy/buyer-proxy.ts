@@ -500,9 +500,6 @@ export class BuyerProxy {
         : undefined
 
       const peerId = parsed.peerId.toLowerCase()
-      if (this._node.peerId && this._node.peerId.toLowerCase() === peerId) {
-        return null
-      }
 
       return {
         peerId: peerId as PeerInfo['peerId'],

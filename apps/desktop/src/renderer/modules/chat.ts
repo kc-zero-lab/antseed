@@ -762,7 +762,7 @@ export function initChatModule({
   async function createNewConversation() {
     if (!bridge || !bridge.chatAiCreateConversation) return;
 
-    const model = elements.chatModelSelect?.value || 'claude-sonnet-4-20250514';
+    const model = elements.chatModelSelect?.value || 'moonshotai/kimi-k2.5';
     try {
       const result = await bridge.chatAiCreateConversation(model);
       if (result.ok && result.data) {

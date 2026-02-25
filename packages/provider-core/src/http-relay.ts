@@ -25,11 +25,25 @@ export interface RelayConfig {
   timeoutMs?: number;
   /** Lowercase header-name prefixes to strip before forwarding upstream. */
   stripHeaderPrefixes?: string[];
+  /** Fields to deep-merge into the JSON request body before forwarding upstream. */
+  injectJsonFields?: Record<string, unknown>;
 }
 
 export interface RelayCallbacks {
   onResponse: (response: SerializedHttpResponse) => void;
   onResponseChunk?: (chunk: SerializedHttpResponseChunk) => void;
+}
+
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...target };
+  for (const [key, val] of Object.entries(source)) {
+    if (val && typeof val === 'object' && !Array.isArray(val) && typeof out[key] === 'object' && out[key] !== null && !Array.isArray(out[key])) {
+      out[key] = deepMerge(out[key] as Record<string, unknown>, val as Record<string, unknown>);
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
 }
 
 export class HttpRelay {
@@ -88,7 +102,18 @@ export class HttpRelay {
       }
 
       // Swap auth headers
-      const swappedRequest = swapAuthHeader(request, effectiveConfig);
+      let swappedRequest = swapAuthHeader(request, effectiveConfig);
+
+      // Inject extra JSON fields into the request body if configured
+      if (this._config.injectJsonFields && swappedRequest.method !== 'GET' && swappedRequest.method !== 'HEAD') {
+        try {
+          const decoded = JSON.parse(new TextDecoder().decode(swappedRequest.body)) as Record<string, unknown>;
+          const merged = deepMerge(decoded, this._config.injectJsonFields);
+          swappedRequest = { ...swappedRequest, body: new TextEncoder().encode(JSON.stringify(merged)) };
+        } catch {
+          // Not JSON — leave body unchanged
+        }
+      }
 
       // Build upstream URL
       const base = this._config.baseUrl.replace(/\/+$/, '');

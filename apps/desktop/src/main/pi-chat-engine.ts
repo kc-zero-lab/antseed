@@ -601,24 +601,34 @@ function anthropicContentFromUser(content: Extract<Message, { role: 'user' }>['c
 }
 
 function anthropicContentFromAssistant(content: AssistantMessage['content']): unknown[] {
-  return content.map((block) => {
+  const blocks: unknown[] = [];
+  for (const block of content) {
+    // Skip undefined holes from unhandled SSE block types (e.g. redacted_thinking).
+    if (!block) {
+      continue;
+    }
     if (block.type === 'text') {
-      return { type: 'text', text: block.text };
+      blocks.push({ type: 'text', text: block.text });
+      continue;
     }
+    // Strip thinking blocks: the proxy routes to arbitrary models (OpenRouter,
+    // local LLMs, etc.) that do not understand Anthropic-format thinking blocks.
+    // Echoing them back causes broken multi-turn conversations.
     if (block.type === 'thinking') {
-      return {
-        type: 'thinking',
-        thinking: block.thinking,
-        ...(block.thinkingSignature ? { signature: block.thinkingSignature } : {}),
-      };
+      continue;
     }
-    return {
+    blocks.push({
       type: 'tool_use',
       id: block.id,
       name: block.name,
       input: block.arguments ?? {},
-    };
-  });
+    });
+  }
+  // Ensure at least one content block — the API rejects empty content arrays.
+  if (blocks.length === 0) {
+    blocks.push({ type: 'text', text: '' });
+  }
+  return blocks;
 }
 
 function anthropicContentFromToolResult(message: ToolResultMessage): unknown[] {
@@ -1017,6 +1027,12 @@ function createBuyerProxyStreamFn(
                 message.content[index] = toolCall;
                 toolJsonByContentIndex.set(index, '');
                 stream.push({ type: 'toolcall_start', contentIndex: index, partial: message });
+              } else {
+                // Unknown block type (e.g. redacted_thinking, signature).
+                // Fill the index so later blocks don't create sparse holes
+                // in the content array. Use an empty thinking block as a
+                // no-op placeholder that anthropicContentFromAssistant strips.
+                message.content[index] = { type: 'thinking', thinking: '' };
               }
               continue;
             }
@@ -1120,6 +1136,10 @@ function createBuyerProxyStreamFn(
           errorMessage,
           timestamp: Date.now(),
         };
+        // Emit meta even on error so peer info is available in the UI.
+        if (responseMeta) {
+          onMeta(responseMeta);
+        }
         stream.push({
           type: 'error',
           reason: aborted ? 'aborted' : 'error',

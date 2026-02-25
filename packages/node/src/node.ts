@@ -456,22 +456,34 @@ export class AntseedNode extends EventEmitter {
     const startTime = Date.now();
     return new Promise<SerializedHttpResponse>((resolve, reject) => {
       const timeoutMs = this._config.requestTimeoutMs ?? 30_000;
+      // Idle timeout for streaming: resets on each chunk so long-running
+      // streams (thinking models, large outputs) stay alive as long as
+      // data keeps flowing.
+      const streamIdleTimeoutMs = Math.max(timeoutMs, 60_000);
       let settled = false;
       let streamStarted = false;
       let streamStartResponse: SerializedHttpResponse | null = null;
       const streamChunks: Uint8Array[] = [];
-      const timeout = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        debugWarn(`[Node] Request ${req.requestId.slice(0, 8)} timed out after ${timeoutMs}ms`);
-        mux.cancelProxyRequest(req.requestId);
-        reject(new Error(`Request ${req.requestId} timed out`));
-      }, timeoutMs);
+      let activeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+      const resetTimeout = (ms: number): void => {
+        if (activeTimeout) clearTimeout(activeTimeout);
+        activeTimeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          debugWarn(`[Node] Request ${req.requestId.slice(0, 8)} timed out after ${Date.now() - startTime}ms`);
+          mux.cancelProxyRequest(req.requestId);
+          reject(new Error(`Request ${req.requestId} timed out`));
+        }, ms);
+      };
+
+      // Initial timeout: wait for the first response frame.
+      resetTimeout(timeoutMs);
 
       const finish = (response: SerializedHttpResponse): void => {
         if (settled) return;
         settled = true;
-        clearTimeout(timeout);
+        if (activeTimeout) clearTimeout(activeTimeout);
         const cleaned = this._stripStreamingHeader(response);
         debugLog(`[Node] Response for ${req.requestId.slice(0, 8)}: status=${cleaned.statusCode} (${Date.now() - startTime}ms, ${cleaned.body.length}b)`);
         resolve(cleaned);
@@ -480,7 +492,7 @@ export class AntseedNode extends EventEmitter {
       const fail = (error: Error): void => {
         if (settled) return;
         settled = true;
-        clearTimeout(timeout);
+        if (activeTimeout) clearTimeout(activeTimeout);
         reject(error);
       };
 
@@ -490,6 +502,8 @@ export class AntseedNode extends EventEmitter {
           if (metadata.streamingStart) {
             streamStarted = true;
             streamStartResponse = this._stripStreamingHeader(response);
+            // Switch to streaming idle timeout: resets on each chunk.
+            resetTimeout(streamIdleTimeoutMs);
             callbacks?.onResponseStart?.(streamStartResponse, { streaming: true });
             return;
           }
@@ -499,6 +513,9 @@ export class AntseedNode extends EventEmitter {
         },
         (chunk) => {
           if (!streamStarted) return;
+
+          // Reset idle timeout on each chunk so streaming stays alive.
+          resetTimeout(streamIdleTimeoutMs);
 
           callbacks?.onResponseChunk?.(chunk);
 
