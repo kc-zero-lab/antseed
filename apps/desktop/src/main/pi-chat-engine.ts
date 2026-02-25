@@ -966,7 +966,8 @@ function createBuyerProxyStreamFn(
           if (done) break;
           resetIdleTimeout();
 
-          sseBuffer += decoder.decode(value, { stream: true });
+          const chunkText = decoder.decode(value, { stream: true });
+          sseBuffer += chunkText;
           const lines = sseBuffer.split('\n');
           sseBuffer = lines.pop() ?? '';
 

@@ -484,6 +484,7 @@ export function initChatModule({
           break;
         case 'thinking':
           {
+            if (!block.thinking?.trim()) break;
             const thinkingLabel = getMyrmecochoryLabel(block.thinking?.length);
           html += '<div class="thinking-block">';
           html += '<div class="thinking-block-header" onclick="this.parentElement.classList.toggle(\'open\')">';
@@ -989,6 +990,7 @@ export function initChatModule({
     }
 
     let streamingBubble: any = null;
+    let streamingContentEl: HTMLElement | null = null;
     let streamingTextBuffer = '';
     let streamingThinkingBuffer = '';
 
@@ -998,6 +1000,7 @@ export function initChatModule({
         clearChatError();
         streamingTextBuffer = '';
         streamingThinkingBuffer = '';
+        streamingContentEl = null;
         activeStreamTurn = Number(data.turn) + 1;
         activeStreamStartedAt = Date.now();
         updateStreamingIndicator();
@@ -1013,7 +1016,6 @@ export function initChatModule({
           <div class="chat-bubble-meta">
             <span class="chat-bubble-stats">${escapeHtml(streamMeta)}</span>
           </div>
-          <div class="chat-bubble-content streaming-cursor"></div>
         `;
         container.appendChild(streamingBubble);
         scrollChatToBottom();
@@ -1026,13 +1028,17 @@ export function initChatModule({
 
         if (data.blockType === 'text') {
           streamingTextBuffer = '';
+          streamingContentEl = document.createElement('div');
+          streamingContentEl.className = 'chat-bubble-content streaming-cursor';
+          streamingBubble.appendChild(streamingContentEl);
+          scrollChatToBottom();
         } else if (data.blockType === 'thinking') {
           streamingThinkingBuffer = '';
           const thinkingLabel = getMyrmecochoryLabel((activeStreamTurn || 0) + Number(data.index || 0));
           const thinkDiv = document.createElement('div');
-          thinkDiv.className = 'thinking-block open';
+          thinkDiv.className = 'thinking-block streaming';
           thinkDiv.id = `stream-think-${data.index}`;
-          thinkDiv.innerHTML = `<div class="thinking-block-header" onclick="this.parentElement.classList.toggle('open')"><span class="thinking-block-triangle">▶</span><span>${escapeHtml(thinkingLabel)}</span></div><div class="thinking-block-body"></div>`;
+          thinkDiv.innerHTML = `<div class="thinking-block-header" onclick="this.parentElement.classList.toggle('open')"><span class="thinking-block-triangle">▶</span><span>${escapeHtml(thinkingLabel)}</span><span class="thinking-dots"><span></span><span></span><span></span></span></div><div class="thinking-block-body"></div>`;
           streamingBubble.appendChild(thinkDiv);
           scrollChatToBottom();
         } else if (data.blockType === 'tool_use') {
@@ -1057,10 +1063,9 @@ export function initChatModule({
 
         if (data.blockType === 'text') {
           streamingTextBuffer += data.text;
-          const contentEl = streamingBubble.querySelector('.chat-bubble-content');
-          if (contentEl) {
-            contentEl.innerHTML = renderMarkdown(streamingTextBuffer);
-            contentEl.classList.add('streaming-cursor');
+          if (streamingContentEl) {
+            streamingContentEl.innerHTML = renderMarkdown(streamingTextBuffer);
+            streamingContentEl.classList.add('streaming-cursor');
           }
           scrollChatToBottom();
         } else if (data.blockType === 'thinking') {
@@ -1079,16 +1084,18 @@ export function initChatModule({
         if (data.conversationId !== uiState.chatActiveConversation || !streamingBubble) return;
 
         if (data.blockType === 'text') {
-          const contentEl = streamingBubble.querySelector('.chat-bubble-content');
-          if (contentEl) {
-            contentEl.classList.remove('streaming-cursor');
-            contentEl.innerHTML = renderMarkdown(streamingTextBuffer);
+          if (streamingContentEl) {
+            streamingContentEl.classList.remove('streaming-cursor');
+            streamingContentEl.innerHTML = renderMarkdown(streamingTextBuffer);
+            streamingContentEl = null;
           }
         } else if (data.blockType === 'thinking') {
-          const thinkHeader = streamingBubble.querySelector(`#stream-think-${data.index} .thinking-block-header span:last-child`);
-          if (thinkHeader) thinkHeader.textContent = 'Myrmecochory trail notes';
           const thinkBlock = streamingBubble.querySelector(`#stream-think-${data.index}`);
-          if (thinkBlock) thinkBlock.classList.remove('open');
+          if (thinkBlock) {
+            thinkBlock.classList.remove('streaming');
+            const dots = thinkBlock.querySelector('.thinking-dots');
+            if (dots) dots.remove();
+          }
         } else if (data.blockType === 'tool_use' && data.input) {
           const toolBlock = streamingBubble.querySelector(`#stream-tool-${data.toolId}`);
           if (toolBlock) {
