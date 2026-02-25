@@ -386,6 +386,34 @@ function requestWantsStreaming(headers: Record<string, string>, body: Uint8Array
   }
 }
 
+function extractHostFromAddress(address: string): string {
+  const trimmed = address.trim()
+  if (trimmed.length === 0) return ''
+
+  if (trimmed.startsWith('[')) {
+    const end = trimmed.indexOf(']')
+    return end > 1 ? trimmed.slice(1, end).toLowerCase() : ''
+  }
+
+  const idx = trimmed.lastIndexOf(':')
+  if (idx > 0) {
+    return trimmed.slice(0, idx).toLowerCase()
+  }
+  return trimmed.toLowerCase()
+}
+
+function isLoopbackHost(host: string): boolean {
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1'
+}
+
+function isLoopbackPeer(peer: PeerInfo): boolean {
+  if (!peer.publicAddress) {
+    return false
+  }
+  const host = extractHostFromAddress(peer.publicAddress)
+  return isLoopbackHost(host)
+}
+
 /**
  * Local HTTP proxy that forwards requests to P2P sellers.
  *
@@ -496,13 +524,16 @@ export class BuyerProxy {
       return this._cachedPeers
     }
 
-    log('Discovering peers via DHT...')
-    let peers = await this._node.discoverPeers()
     const localSeeder = await this._readLocalSeederFallback()
-    if (localSeeder && !peers.some((peer) => peer.peerId === localSeeder.peerId)) {
-      peers = [localSeeder, ...peers]
-      log(`Added local seeder fallback ${localSeeder.peerId.slice(0, 12)}... @ ${localSeeder.publicAddress}`)
+    if (localSeeder) {
+      this._cachedPeers = [localSeeder]
+      this._cacheTimestamp = now
+      log(`Using local seeder ${localSeeder.peerId.slice(0, 12)}... @ ${localSeeder.publicAddress} (skipping DHT lookup)`)
+      return this._cachedPeers
     }
+
+    log('Discovering peers via DHT...')
+    const peers = await this._node.discoverPeers()
 
     if (peers.length > 0) {
       this._cachedPeers = peers
@@ -579,9 +610,23 @@ export class BuyerProxy {
 
     // Use router to select peer
     const router = this._node.router
-    const selectedPeer = router
-      ? router.selectPeer(serializedReq, peers)
-      : peers[0] ?? null
+    const localPeers = peers.filter((peer) => isLoopbackPeer(peer))
+    let selectedPeer: PeerInfo | null = null
+
+    if (localPeers.length > 0) {
+      selectedPeer = router
+        ? router.selectPeer(serializedReq, localPeers)
+        : localPeers[0] ?? null
+      if (selectedPeer) {
+        log(`Preferring local peer ${selectedPeer.peerId.slice(0, 12)}... @ ${selectedPeer.publicAddress ?? 'unknown'}`)
+      }
+    }
+
+    if (!selectedPeer) {
+      selectedPeer = router
+        ? router.selectPeer(serializedReq, peers)
+        : peers[0] ?? null
+    }
 
     if (!selectedPeer) {
       const diagnostics = this._formatPeerSelectionDiagnostics(peers)

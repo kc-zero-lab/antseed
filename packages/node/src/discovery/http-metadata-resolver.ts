@@ -7,34 +7,52 @@ export interface HttpMetadataResolverConfig {
   timeoutMs?: number;
   /** Port offset from the signaling port to the metadata HTTP port. Default: 0 (same port) */
   metadataPortOffset?: number;
+  /** Cooldown in ms before retrying an endpoint that recently failed. Default: 30000 */
+  failureCooldownMs?: number;
 }
 
 export class HttpMetadataResolver implements MetadataResolver {
   private readonly timeoutMs: number;
   private readonly metadataPortOffset: number;
+  private readonly failureCooldownMs: number;
+  private readonly failedEndpoints: Map<string, number>;
 
   constructor(config?: HttpMetadataResolverConfig) {
     this.timeoutMs = config?.timeoutMs ?? 5000;
     this.metadataPortOffset = config?.metadataPortOffset ?? 0;
+    this.failureCooldownMs = Math.max(0, config?.failureCooldownMs ?? 30_000);
+    this.failedEndpoints = new Map();
   }
 
   async resolve(peer: PeerEndpoint): Promise<PeerMetadata | null> {
     const metadataPort = peer.port + this.metadataPortOffset;
+    const endpointKey = this.getEndpointKey(peer.host, metadataPort);
+    const now = Date.now();
+    const failedUntil = this.failedEndpoints.get(endpointKey);
+    if (failedUntil !== undefined) {
+      if (failedUntil > now) {
+        return null;
+      }
+      this.failedEndpoints.delete(endpointKey);
+    }
+
     const url = `http://${peer.host}:${metadataPort}/metadata`;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-
       const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
 
       if (!response.ok) {
+        this.markEndpointFailure(endpointKey);
         return null;
       }
 
-      return (await response.json()) as PeerMetadata;
+      const metadata = (await response.json()) as PeerMetadata;
+      this.failedEndpoints.delete(endpointKey);
+      return metadata;
     } catch (err) {
+      this.markEndpointFailure(endpointKey);
       const reason = err instanceof DOMException && err.name === 'AbortError'
         ? 'timeout'
         : err instanceof SyntaxError
@@ -42,6 +60,19 @@ export class HttpMetadataResolver implements MetadataResolver {
           : 'network error';
       debugWarn(`[MetadataResolver] Failed to resolve ${url}: ${reason}`);
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
+  }
+
+  private markEndpointFailure(endpointKey: string): void {
+    if (this.failureCooldownMs <= 0) {
+      return;
+    }
+    this.failedEndpoints.set(endpointKey, Date.now() + this.failureCooldownMs);
+  }
+
+  private getEndpointKey(host: string, port: number): string {
+    return `${host.toLowerCase()}:${port}`;
   }
 }

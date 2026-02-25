@@ -3,7 +3,7 @@ import type { DHTNode } from "./dht-node.js";
 import { providerTopic, capabilityTopic, topicToInfoHash } from "./dht-node.js";
 import type { PeerMetadata } from "./peer-metadata.js";
 import { encodeMetadataForSigning } from "./metadata-codec.js";
-import type { MetadataResolver } from "./metadata-resolver.js";
+import type { MetadataResolver, PeerEndpoint } from "./metadata-resolver.js";
 
 export interface LookupConfig {
   dht: DHTNode;
@@ -38,49 +38,30 @@ export class PeerLookup {
     const topic = providerTopic(provider);
     const infoHash = topicToInfoHash(topic);
     const peers = await this.config.dht.lookup(infoHash);
-
-    const results: LookupResult[] = [];
-    for (const peer of peers) {
-      if (results.length >= this.config.maxResults) {
-        break;
-      }
-
-      const metadata = await this.config.metadataResolver.resolve(peer);
-      if (metadata === null) {
-        continue;
-      }
-
-      if (this.config.requireValidSignature) {
-        const valid = await this.verifyMetadataSignature(metadata);
-        if (!valid) {
-          continue;
-        }
-      }
-
-      if (!this.config.allowStaleMetadata && this.isStale(metadata)) {
-        continue;
-      }
-
-      results.push({
-        metadata,
-        host: peer.host,
-        port: peer.port,
-      });
-    }
-
-    return results;
+    return this.resolveLookupResults(peers);
   }
 
   async findByCapability(capability: string, name?: string): Promise<LookupResult[]> {
     const topic = capabilityTopic(capability, name);
     const infoHash = topicToInfoHash(topic);
     const peers = await this.config.dht.lookup(infoHash);
+    return this.resolveLookupResults(peers);
+  }
 
+  private async resolveLookupResults(peers: PeerEndpoint[]): Promise<LookupResult[]> {
     const results: LookupResult[] = [];
+    const seenEndpoints = new Set<string>();
+
     for (const peer of peers) {
       if (results.length >= this.config.maxResults) {
         break;
       }
+
+      const endpointKey = `${peer.host.toLowerCase()}:${peer.port}`;
+      if (seenEndpoints.has(endpointKey)) {
+        continue;
+      }
+      seenEndpoints.add(endpointKey);
 
       const metadata = await this.config.metadataResolver.resolve(peer);
       if (metadata === null) {

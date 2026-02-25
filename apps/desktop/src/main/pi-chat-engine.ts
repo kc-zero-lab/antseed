@@ -485,20 +485,92 @@ function mapStopReason(value: unknown): AssistantMessage['stopReason'] {
   return 'stop';
 }
 
-function parseToolJson(raw: string): Record<string, unknown> {
+function escapeJsonControlCharactersInStrings(raw: string): string {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (!char) {
+      continue;
+    }
+    if (!inString) {
+      if (char === '"') {
+        inString = true;
+      }
+      out += char;
+      continue;
+    }
+
+    if (escaped) {
+      out += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      out += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      out += char;
+      inString = false;
+      continue;
+    }
+
+    const code = char.charCodeAt(0);
+    if (code < 0x20) {
+      if (char === '\n') out += '\\n';
+      else if (char === '\r') out += '\\r';
+      else if (char === '\t') out += '\\t';
+      else if (char === '\b') out += '\\b';
+      else if (char === '\f') out += '\\f';
+      else out += `\\u${code.toString(16).padStart(4, '0')}`;
+      continue;
+    }
+
+    out += char;
+  }
+
+  return out;
+}
+
+function isToolArgumentsObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseToolJson(raw: string): Record<string, unknown> | undefined {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
-    return {};
+    return undefined;
   }
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === 'object') {
-      return parsed as Record<string, unknown>;
+
+  const parseObject = (value: string): Record<string, unknown> | undefined => {
+    try {
+      const parsed = JSON.parse(value);
+      if (isToolArgumentsObject(parsed)) {
+        return parsed;
+      }
+    } catch {
+      return undefined;
     }
-  } catch {
-    return {};
+    return undefined;
+  };
+
+  const direct = parseObject(trimmed);
+  if (direct) {
+    return direct;
   }
-  return {};
+
+  const repaired = parseObject(escapeJsonControlCharactersInStrings(trimmed));
+  if (repaired) {
+    return repaired;
+  }
+
+  return undefined;
 }
 
 function convertUserMessageForUi(message: Message): AiChatMessage {
@@ -981,7 +1053,10 @@ function createBuyerProxyStreamFn(
                 toolJsonByContentIndex.set(index, merged);
                 const current = message.content[index];
                 if (current && current.type === 'toolCall') {
-                  current.arguments = parseToolJson(merged);
+                  const parsed = parseToolJson(merged);
+                  if (parsed) {
+                    current.arguments = parsed;
+                  }
                 }
                 stream.push({ type: 'toolcall_delta', contentIndex: index, delta: nextDelta, partial: message });
               }
@@ -999,7 +1074,10 @@ function createBuyerProxyStreamFn(
                 stream.push({ type: 'thinking_end', contentIndex: index, content: current.thinking, partial: message });
               } else if (current.type === 'toolCall') {
                 const merged = toolJsonByContentIndex.get(index) ?? '';
-                current.arguments = parseToolJson(merged);
+                const parsed = parseToolJson(merged);
+                if (parsed) {
+                  current.arguments = parsed;
+                }
                 stream.push({ type: 'toolcall_end', contentIndex: index, toolCall: current, partial: message });
               }
               continue;
@@ -1406,6 +1484,7 @@ export function registerPiChatHandlers({
     }
 
     const turnMetaQueue: AiMessageMeta[] = [];
+    const toolArgsById = new Map<string, Record<string, unknown>>();
     session.agent.streamFn = createBuyerProxyStreamFn((meta) => {
       turnMetaQueue.push(meta);
     });
@@ -1479,6 +1558,9 @@ export function registerPiChatHandlers({
         }
         if (update.type === 'toolcall_start') {
           const tool = extractToolCallFromPartial(update.partial, update.contentIndex);
+          if (isToolArgumentsObject(tool.arguments)) {
+            toolArgsById.set(tool.id, tool.arguments);
+          }
           sendToRenderer('chat:ai-stream-block-start', {
             conversationId,
             index: update.contentIndex,
@@ -1489,29 +1571,38 @@ export function registerPiChatHandlers({
           return;
         }
         if (update.type === 'toolcall_end') {
+          const toolInput = isToolArgumentsObject(update.toolCall.arguments)
+            ? update.toolCall.arguments
+            : {};
+          toolArgsById.set(update.toolCall.id, toolInput);
           sendToRenderer('chat:ai-stream-block-stop', {
             conversationId,
             index: update.contentIndex,
             blockType: 'tool_use',
             toolId: update.toolCall.id,
             toolName: update.toolCall.name,
-            input: update.toolCall.arguments,
+            input: toolInput,
           });
         }
         return;
       }
 
       if (event.type === 'tool_execution_start') {
+        const eventArgs = isToolArgumentsObject(event.args) ? event.args : undefined;
+        if (eventArgs) {
+          toolArgsById.set(event.toolCallId, eventArgs);
+        }
         sendToRenderer('chat:ai-tool-executing', {
           conversationId,
           toolUseId: event.toolCallId,
           name: event.toolName,
-          input: (event.args ?? {}) as Record<string, unknown>,
+          input: eventArgs ?? toolArgsById.get(event.toolCallId) ?? {},
         });
         return;
       }
 
       if (event.type === 'tool_execution_end') {
+        toolArgsById.delete(event.toolCallId);
         sendToRenderer('chat:ai-tool-result', {
           conversationId,
           toolUseId: event.toolCallId,

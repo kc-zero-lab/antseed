@@ -94,6 +94,7 @@ const plugin: AntseedProviderPlugin = {
         tokenProvider,
         maxConcurrency,
         allowedModels,
+        stripHeaderPrefixes: ['anthropic-', 'x-stainless-'],
       },
     });
   },

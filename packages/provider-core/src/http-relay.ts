@@ -23,6 +23,8 @@ export interface RelayConfig {
   maxConcurrency: number;
   allowedModels: string[];
   timeoutMs?: number;
+  /** Lowercase header-name prefixes to strip before forwarding upstream. */
+  stripHeaderPrefixes?: string[];
 }
 
 export interface RelayCallbacks {
@@ -93,13 +95,18 @@ export class HttpRelay {
       const path = request.path.startsWith('/') ? request.path : `/${request.path}`;
       const url = `${base}${path}`;
 
-      // Build fetch headers, stripping hop-by-hop
+      // Build fetch headers, stripping hop-by-hop and provider-specific prefixes
+      const stripPrefixes = this._config.stripHeaderPrefixes ?? [];
       const fetchHeaders: Record<string, string> = {};
       for (const [key, value] of Object.entries(swappedRequest.headers)) {
         const lower = key.toLowerCase();
-        if (!HOP_BY_HOP_HEADERS.has(lower) && !INTERNAL_HEADERS.has(lower) && lower !== 'host' && lower !== 'content-length' && lower !== 'accept-encoding') {
-          fetchHeaders[key] = value;
+        if (HOP_BY_HOP_HEADERS.has(lower) || INTERNAL_HEADERS.has(lower) || lower === 'host' || lower === 'content-length' || lower === 'accept-encoding') {
+          continue;
         }
+        if (stripPrefixes.length > 0 && stripPrefixes.some((p) => lower.startsWith(p))) {
+          continue;
+        }
+        fetchHeaders[key] = value;
       }
 
       const timeoutMs = this._config.timeoutMs ?? 120_000;

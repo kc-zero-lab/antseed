@@ -1718,6 +1718,9 @@ select.form-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: #1b1c1f;
+  padding: 3px 6px;
+  border-radius: 3px;
 }
 
 .tool-inline-status {

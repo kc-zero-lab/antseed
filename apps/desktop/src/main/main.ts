@@ -2244,6 +2244,77 @@ ipcMain.handle('chat:ai-abort', async () => {
 
 // ── Streaming AI Chat ──
 
+function escapeJsonControlCharactersInStrings(raw: string): string {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (!char) continue;
+
+    if (!inString) {
+      if (char === '"') inString = true;
+      out += char;
+      continue;
+    }
+
+    if (escaped) {
+      out += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      out += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      out += char;
+      inString = false;
+      continue;
+    }
+
+    const code = char.charCodeAt(0);
+    if (code < 0x20) {
+      if (char === '\n') out += '\\n';
+      else if (char === '\r') out += '\\r';
+      else if (char === '\t') out += '\\t';
+      else if (char === '\b') out += '\\b';
+      else if (char === '\f') out += '\\f';
+      else out += `\\u${code.toString(16).padStart(4, '0')}`;
+      continue;
+    }
+
+    out += char;
+  }
+
+  return out;
+}
+
+function parseToolInputJson(raw: string): Record<string, unknown> {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
+
+  const parseObject = (value: string): Record<string, unknown> | undefined => {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
+  };
+
+  return parseObject(trimmed) ?? parseObject(escapeJsonControlCharactersInStrings(trimmed)) ?? {};
+}
+
 async function streamSingleTurn(
   conv: AiConversation,
   conversationId: string,
@@ -2412,8 +2483,7 @@ async function streamSingleTurn(
             blocks.push({ type: 'text', text: textAccum });
             mainWindow?.webContents.send('chat:ai-stream-block-stop', { conversationId, index: currentBlockIndex, blockType: 'text' });
           } else if (currentBlockType === 'tool_use') {
-            let parsedInput: Record<string, unknown> = {};
-            try { parsedInput = JSON.parse(toolJsonAccum || '{}'); } catch { /* empty */ }
+            const parsedInput = parseToolInputJson(toolJsonAccum);
             blocks.push({ type: 'tool_use', id: currentToolId, name: currentToolName, input: parsedInput });
             mainWindow?.webContents.send('chat:ai-stream-block-stop', { conversationId, index: currentBlockIndex, blockType: 'tool_use', toolId: currentToolId, toolName: currentToolName, input: parsedInput });
           } else if (currentBlockType === 'thinking') {
