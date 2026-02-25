@@ -35,6 +35,121 @@ export interface NetworkStats {
 }
 
 const SCAN_INTERVAL_MS = 30_000;
+const DEFAULT_DISCOVERY_PROVIDERS = [
+  'anthropic',
+  'openai',
+  'google',
+  'claude-code',
+  'claude-oauth',
+  'openrouter',
+  'local-llm',
+];
+const PROVIDER_ALIAS_MAP: Record<string, string> = {
+  '@antseed/provider-anthropic': 'anthropic',
+  'antseed-provider-anthropic': 'anthropic',
+  '@antseed/provider-claude-code': 'claude-code',
+  'antseed-provider-claude-code': 'claude-code',
+  '@antseed/provider-claude-oauth': 'claude-oauth',
+  'antseed-provider-claude-oauth': 'claude-oauth',
+  '@antseed/provider-openrouter': 'openrouter',
+  'antseed-provider-openrouter': 'openrouter',
+  '@antseed/provider-local-llm': 'local-llm',
+  'antseed-provider-local-llm': 'local-llm',
+};
+
+function normalizeProviderTopicName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const raw = value.trim().toLowerCase();
+  if (!raw) {
+    return null;
+  }
+
+  const alias = PROVIDER_ALIAS_MAP[raw];
+  if (alias) {
+    return alias;
+  }
+
+  if (raw.startsWith('@antseed/provider-')) {
+    return raw.slice('@antseed/provider-'.length);
+  }
+  if (raw.startsWith('antseed-provider-')) {
+    return raw.slice('antseed-provider-'.length);
+  }
+
+  return raw;
+}
+
+export function resolveDiscoveryProviders(
+  config: Pick<DashboardConfig, 'seller' | 'buyer'>,
+): string[] {
+  const topics = new Set<string>();
+
+  for (const candidate of config.seller.enabledProviders) {
+    const normalized = normalizeProviderTopicName(candidate);
+    if (normalized) {
+      topics.add(normalized);
+    }
+  }
+
+  for (const candidate of config.buyer.preferredProviders) {
+    const normalized = normalizeProviderTopicName(candidate);
+    if (normalized) {
+      topics.add(normalized);
+    }
+  }
+
+  for (const candidate of DEFAULT_DISCOVERY_PROVIDERS) {
+    topics.add(candidate);
+  }
+
+  return Array.from(topics);
+}
+
+function providerNamesFromMetadata(
+  metadata: Pick<PeerMetadata, 'providers'> | null | undefined,
+): string[] {
+  if (!metadata?.providers || metadata.providers.length === 0) {
+    return [];
+  }
+
+  const providers = new Set<string>();
+  for (const entry of metadata.providers) {
+    const normalized = normalizeProviderTopicName(entry.provider);
+    if (normalized) {
+      providers.add(normalized);
+    }
+  }
+  return Array.from(providers);
+}
+
+export function resolveNetworkPeerProviders(
+  metadata: Pick<PeerMetadata, 'providers'> | null | undefined,
+  existingProviders: string[] | undefined,
+  discoveredTopic: string,
+): string[] {
+  // Prefer explicit provider list from peer metadata when available.
+  const fromMetadata = providerNamesFromMetadata(metadata);
+  if (fromMetadata.length > 0) {
+    return fromMetadata;
+  }
+
+  // Otherwise accumulate prior inferred topics and current lookup topic.
+  const providers = new Set<string>();
+  for (const provider of existingProviders ?? []) {
+    const normalized = normalizeProviderTopicName(provider);
+    if (normalized) {
+      providers.add(normalized);
+    }
+  }
+  const normalizedTopic = normalizeProviderTopicName(discoveredTopic);
+  if (normalizedTopic) {
+    providers.add(normalizedTopic);
+  }
+  return Array.from(providers);
+}
 
 export function resolveMetadataSummaryPricing(
   metadata: Pick<PeerMetadata, 'providers'> | null | undefined,
@@ -142,13 +257,7 @@ export class DHTQueryService {
   async scanNow(): Promise<void> {
     if (!this.dhtNode || !this.healthMonitor) return;
 
-    const enabledProviders = this.config.seller.enabledProviders;
-    // Also scan common provider topics even if not enabled locally
-    const topics = new Set(enabledProviders);
-    // Add well-known providers to discover the broader network
-    for (const p of ['anthropic', 'openai', 'google']) {
-      topics.add(p);
-    }
+    const topics = resolveDiscoveryProviders(this.config);
 
     const discoveredPeers = new Map<string, NetworkPeer>();
 
@@ -174,10 +283,7 @@ export class DHTQueryService {
           const peerId = metadata?.peerId ?? `${ep.host}:${ep.port}`;
 
           const existing = discoveredPeers.get(peerId);
-          const providers = existing?.providers ?? [];
-          if (!providers.includes(name)) {
-            providers.push(name);
-          }
+          const providers = resolveNetworkPeerProviders(metadata, existing?.providers, name);
 
           // Extract summary pricing and capacity from metadata
           const summaryPricing = this.resolveSummaryPricing(metadata);
