@@ -375,3 +375,9 @@ pre {
     display: none;
   }
 }
+
+.nav-docs-btn:hover {
+  border-color: #3dffa2 !important;
+  color: #e6edf3 !important;
+  text-decoration: none !important;
+}

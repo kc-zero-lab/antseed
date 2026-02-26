@@ -149,18 +149,19 @@ export default function Navbar(): JSX.Element {
         <Link
           to={docsTo}
           onClick={scrollToTop}
-          className="custom-nav-link"
+          className="custom-nav-link nav-docs-btn"
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '12px',
+            fontWeight: 500,
             color: '#8b949e',
-            letterSpacing: '3px',
-            textTransform: 'uppercase',
+            letterSpacing: '1px',
             textDecoration: 'none',
-            transition: 'color 0.2s, border-color 0.2s',
-            border: '1px solid rgba(139, 148, 158, 0.4)',
+            background: 'transparent',
+            border: '1px solid rgba(61, 255, 162, 0.09)',
             borderRadius: '6px',
-            padding: '5px 12px',
+            padding: '8px 20px',
+            transition: 'all 0.2s',
           }}
         >
           Docs
