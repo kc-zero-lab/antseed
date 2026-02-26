@@ -736,6 +736,7 @@ export class AntseedNode extends EventEmitter {
           provider: p.name,
           models: p.models,
           ...(p.modelCategories ? { modelCategories: { ...p.modelCategories } } : {}),
+          ...(p.modelApiProtocols ? { modelApiProtocols: { ...p.modelApiProtocols } } : {}),
           maxConcurrency: p.maxConcurrency,
         })),
         ...(this._config.displayName ? { displayName: this._config.displayName } : {}),
@@ -852,11 +853,21 @@ export class AntseedNode extends EventEmitter {
       }
 
       const requestedModel = this._extractRequestedModel(request);
-      const provider = this._providers.find((p) =>
-        p.models.length === 0
-        || (requestedModel && p.models.includes(requestedModel))
-        || this._providers.length === 1
-      );
+      const requestedProvider = this._extractRequestedProvider(request);
+      const matchesModel = (provider: Provider): boolean =>
+        provider.models.length === 0
+        || (requestedModel !== null && provider.models.includes(requestedModel))
+        || this._providers.length === 1;
+
+      let provider: Provider | undefined;
+      if (requestedProvider) {
+        provider = this._providers.find((candidate) =>
+          candidate.name.toLowerCase() === requestedProvider && matchesModel(candidate),
+        );
+      }
+      if (!provider) {
+        provider = this._providers.find((candidate) => matchesModel(candidate));
+      }
 
       if (!provider) {
         debugWarn(`[Node] No matching provider for ${request.path}`);
@@ -1095,6 +1106,15 @@ export class AntseedNode extends EventEmitter {
       return null;
     }
     return model.trim();
+  }
+
+  private _extractRequestedProvider(request: SerializedHttpRequest): string | null {
+    const providers = Object.entries(request.headers)
+      .filter(([header]) => header.toLowerCase() === "x-antseed-provider")
+      .map(([, value]) => value.trim().toLowerCase())
+      .filter((value) => value.length > 0);
+
+    return providers[0] ?? null;
   }
 
   private _resolveProviderPricing(
@@ -1870,6 +1890,7 @@ export class AntseedNode extends EventEmitter {
     const firstProvider = result.metadata.providers[0];
     const providerPricingEntries: NonNullable<PeerInfo["providerPricing"]> = {};
     const providerModelCategoryEntries: NonNullable<PeerInfo["providerModelCategories"]> = {};
+    const providerModelApiProtocolEntries: NonNullable<PeerInfo["providerModelApiProtocols"]> = {};
 
     for (const providerAnnouncement of result.metadata.providers) {
       providerPricingEntries[providerAnnouncement.provider] = {
@@ -1888,10 +1909,20 @@ export class AntseedNode extends EventEmitter {
           ),
         };
       }
+
+      if (providerAnnouncement.modelApiProtocols && Object.keys(providerAnnouncement.modelApiProtocols).length > 0) {
+        providerModelApiProtocolEntries[providerAnnouncement.provider] = {
+          models: Object.fromEntries(
+            Object.entries(providerAnnouncement.modelApiProtocols)
+              .map(([model, protocols]) => [model, [...protocols]]),
+          ),
+        };
+      }
     }
 
     const hasProviderPricing = Object.keys(providerPricingEntries).length > 0;
     const hasProviderModelCategories = Object.keys(providerModelCategoryEntries).length > 0;
+    const hasProviderModelApiProtocols = Object.keys(providerModelApiProtocolEntries).length > 0;
 
     return {
       peerId: result.metadata.peerId,
@@ -1901,6 +1932,7 @@ export class AntseedNode extends EventEmitter {
       publicAddress: `${result.host}:${result.port}`,
       ...(hasProviderPricing ? { providerPricing: providerPricingEntries } : {}),
       ...(hasProviderModelCategories ? { providerModelCategories: providerModelCategoryEntries } : {}),
+      ...(hasProviderModelApiProtocols ? { providerModelApiProtocols: providerModelApiProtocolEntries } : {}),
       defaultInputUsdPerMillion: firstProvider?.defaultPricing.inputUsdPerMillion,
       defaultOutputUsdPerMillion: firstProvider?.defaultPricing.outputUsdPerMillion,
       maxConcurrency: firstProvider?.maxConcurrency,

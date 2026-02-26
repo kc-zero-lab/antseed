@@ -1,5 +1,6 @@
 import type { SerializedHttpRequest, SerializedHttpResponse, SerializedHttpResponseChunk } from '../types/http.js';
 import type { ProviderCapability } from '../types/capability.js';
+import type { ModelApiProtocol } from '../types/model-api.js';
 
 export interface ProviderTokenPricingUsdPerMillion {
   inputUsdPerMillion: number;
@@ -30,6 +31,9 @@ export interface Provider {
 
   /** Optional model category tags used for discovery metadata. */
   modelCategories?: Record<string, string[]>;
+
+  /** Optional per-model API protocol support advertised via discovery metadata. */
+  modelApiProtocols?: Record<string, ModelApiProtocol[]>;
 
   /** Maximum concurrent requests this provider can handle */
   maxConcurrency: number;

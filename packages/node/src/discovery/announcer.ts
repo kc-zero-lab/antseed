@@ -5,6 +5,8 @@ import { providerTopic, capabilityTopic, topicToInfoHash } from "./dht-node.js";
 import type { PeerOffering } from "../types/capability.js";
 import type { PeerMetadata, ProviderAnnouncement } from "./peer-metadata.js";
 import { METADATA_VERSION } from "./peer-metadata.js";
+import type { ModelApiProtocol } from "../types/model-api.js";
+import { isKnownModelApiProtocol } from "../types/model-api.js";
 import { encodeMetadataForSigning } from "./metadata-codec.js";
 import { debugWarn } from "../utils/debug.js";
 import { bytesToHex } from "../utils/hex.js";
@@ -18,6 +20,7 @@ export interface AnnouncerConfig {
     provider: string;
     models: string[];
     modelCategories?: Record<string, string[]>;
+    modelApiProtocols?: Record<string, ModelApiProtocol[]>;
     maxConcurrency: number;
   }>;
   displayName?: string;
@@ -114,6 +117,10 @@ export class PeerAnnouncer {
       if (normalizedModelCategories) {
         providerAnnouncement.modelCategories = normalizedModelCategories;
       }
+      const normalizedModelApiProtocols = this._normalizeModelApiProtocols(p.modelApiProtocols, p.models);
+      if (normalizedModelApiProtocols) {
+        providerAnnouncement.modelApiProtocols = normalizedModelApiProtocols;
+      }
       return providerAnnouncement;
     });
 
@@ -204,6 +211,36 @@ export class PeerAnnouncer {
           categories
             .map((category) => category.trim().toLowerCase())
             .filter((category) => category.length > 0),
+        ),
+      );
+      if (deduped.length === 0) {
+        continue;
+      }
+      normalized[model] = deduped;
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }
+
+  private _normalizeModelApiProtocols(
+    modelApiProtocols: Record<string, ModelApiProtocol[]> | undefined,
+    supportedModels: string[],
+  ): Record<string, ModelApiProtocol[]> | undefined {
+    if (!modelApiProtocols) {
+      return undefined;
+    }
+
+    const supportedModelSet = new Set(supportedModels);
+    const normalized: Record<string, ModelApiProtocol[]> = {};
+    for (const [model, protocols] of Object.entries(modelApiProtocols)) {
+      if (!supportedModelSet.has(model)) {
+        continue;
+      }
+      const deduped = Array.from(
+        new Set(
+          protocols
+            .map((protocol) => protocol.trim().toLowerCase())
+            .filter((protocol): protocol is ModelApiProtocol => isKnownModelApiProtocol(protocol)),
         ),
       );
       if (deduped.length === 0) {

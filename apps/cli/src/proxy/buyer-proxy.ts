@@ -3,14 +3,23 @@ import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import type { AntseedNode } from '@antseed/node'
 import type {
+  AntseedNode,
   PeerInfo,
   RequestStreamResponseMetadata,
   SerializedHttpRequest,
   SerializedHttpResponse,
   SerializedHttpResponseChunk,
 } from '@antseed/node'
+import {
+  detectRequestModelApiProtocol,
+  inferProviderDefaultModelApiProtocols,
+  type ModelApiProtocol,
+  selectTargetProtocolForRequest,
+  type TargetProtocolSelection,
+  transformAnthropicMessagesRequestToOpenAIChat,
+  transformOpenAIChatResponseToAnthropicMessage,
+} from './model-api-adapter.js'
 
 export interface BuyerProxyConfig {
   port: number
@@ -46,6 +55,83 @@ type ResponseTelemetry = {
   usage: TokenUsageSummary
   pricing: RoutingPricing
   estimatedCostUsd: number | null
+}
+
+type PeerProtocolRoutePlan = {
+  provider: string
+  selection: TargetProtocolSelection | null
+}
+
+function getExplicitProviderOverride(request: SerializedHttpRequest): string | null {
+  const provider = request.headers['x-antseed-provider']?.trim().toLowerCase()
+  return provider && provider.length > 0 ? provider : null
+}
+
+function getPeerProviderProtocols(
+  peer: PeerInfo,
+  provider: string,
+  requestedModel: string | null,
+): ModelApiProtocol[] {
+  const fromMetadata = (
+    peer as PeerInfo & {
+      providerModelApiProtocols?: Record<string, { models: Record<string, ModelApiProtocol[]> }>
+    }
+  ).providerModelApiProtocols?.[provider]?.models
+  if (fromMetadata) {
+    if (requestedModel && fromMetadata[requestedModel]?.length) {
+      return Array.from(new Set(fromMetadata[requestedModel]!))
+    }
+
+    const merged = Object.values(fromMetadata).flat()
+    if (merged.length > 0) {
+      return Array.from(new Set(merged))
+    }
+  }
+
+  return inferProviderDefaultModelApiProtocols(provider)
+}
+
+function resolvePeerRoutePlan(
+  peer: PeerInfo,
+  requestProtocol: ModelApiProtocol | null,
+  requestedModel: string | null,
+  explicitProvider: string | null,
+): PeerProtocolRoutePlan | null {
+  const providers = peer.providers
+    .map((provider) => provider.trim().toLowerCase())
+    .filter((provider) => provider.length > 0)
+
+  if (providers.length === 0) {
+    return null
+  }
+
+  if (explicitProvider && !providers.includes(explicitProvider)) {
+    return null
+  }
+
+  const candidates = explicitProvider ? [explicitProvider] : providers
+
+  if (!requestProtocol) {
+    const provider = candidates[0]
+    return provider ? { provider, selection: null } : null
+  }
+
+  let transformedFallback: PeerProtocolRoutePlan | null = null
+  for (const provider of candidates) {
+    const supportedProtocols = getPeerProviderProtocols(peer, provider, requestedModel)
+    const selection = selectTargetProtocolForRequest(requestProtocol, supportedProtocols)
+    if (!selection) {
+      continue
+    }
+    if (!selection.requiresTransform) {
+      return { provider, selection }
+    }
+    if (!transformedFallback) {
+      transformedFallback = { provider, selection }
+    }
+  }
+
+  return transformedFallback
 }
 
 function parseTokenCount(value: unknown): number {
@@ -185,9 +271,9 @@ function parseJsonUsage(body: Uint8Array): { inputTokens: number; outputTokens: 
 }
 
 function pickProviderForPeer(peer: PeerInfo, request: SerializedHttpRequest): string {
-  const explicit = request.headers['x-antseed-provider']?.trim()
-  if (explicit && explicit.length > 0) {
-    return explicit.toLowerCase()
+  const explicit = getExplicitProviderOverride(request)
+  if (explicit) {
+    return explicit
   }
 
   if (request.path.startsWith('/v1/messages') && peer.providers.includes('anthropic')) {
@@ -614,9 +700,33 @@ export class BuyerProxy {
       return
     }
 
+    const requestProtocol = detectRequestModelApiProtocol(serializedReq)
+    const requestedModel = extractRequestedModel(serializedReq)
+    const explicitProvider = getExplicitProviderOverride(serializedReq)
+    const routePlanByPeerId = new Map<string, PeerProtocolRoutePlan>()
+
+    let candidatePeers = peers
+    if (requestProtocol) {
+      candidatePeers = peers.filter((peer) => {
+        const plan = resolvePeerRoutePlan(peer, requestProtocol, requestedModel, explicitProvider)
+        if (!plan) return false
+        routePlanByPeerId.set(peer.peerId, plan)
+        return true
+      })
+
+      if (candidatePeers.length === 0) {
+        const protocolLabel = requestProtocol
+        const providerLabel = explicitProvider ? ` for provider "${explicitProvider}"` : ''
+        const diagnostics = this._formatPeerSelectionDiagnostics(peers)
+        res.writeHead(502, { 'content-type': 'text/plain' })
+        res.end(`No peers support ${protocolLabel}${providerLabel}. ${diagnostics}`)
+        return
+      }
+    }
+
     // Use router to select peer
     const router = this._node.router
-    const localPeers = peers.filter((peer) => isLoopbackPeer(peer))
+    const localPeers = candidatePeers.filter((peer) => isLoopbackPeer(peer))
     let selectedPeer: PeerInfo | null = null
 
     if (localPeers.length > 0) {
@@ -630,34 +740,87 @@ export class BuyerProxy {
 
     if (!selectedPeer) {
       selectedPeer = router
-        ? router.selectPeer(serializedReq, peers)
-        : peers[0] ?? null
+        ? router.selectPeer(serializedReq, candidatePeers)
+        : candidatePeers[0] ?? null
     }
 
     if (!selectedPeer) {
-      const diagnostics = this._formatPeerSelectionDiagnostics(peers)
+      const diagnostics = this._formatPeerSelectionDiagnostics(candidatePeers)
       log('Router could not select a peer.', diagnostics)
       res.writeHead(502, { 'content-type': 'text/plain' })
       res.end(`Router could not select a suitable peer. ${diagnostics}`)
       return
     }
 
+    const selectedRoutePlan = routePlanByPeerId.get(selectedPeer.peerId)
+      ?? resolvePeerRoutePlan(selectedPeer, requestProtocol, requestedModel, explicitProvider)
+
+    if (!selectedRoutePlan) {
+      const diagnostics = this._formatPeerSelectionDiagnostics(candidatePeers)
+      res.writeHead(502, { 'content-type': 'text/plain' })
+      res.end(`No compatible provider route found for selected peer. ${diagnostics}`)
+      return
+    }
+
+    let requestForPeer: SerializedHttpRequest = {
+      ...serializedReq,
+      headers: {
+        ...serializedReq.headers,
+        'x-antseed-provider': selectedRoutePlan.provider,
+      },
+    }
+    let adaptResponse: ((response: SerializedHttpResponse) => SerializedHttpResponse) | null = null
+    let forceDisableUpstreamStreaming = false
+
+    if (selectedRoutePlan.selection?.requiresTransform) {
+      if (
+        requestProtocol === 'anthropic-messages'
+        && selectedRoutePlan.selection.targetProtocol === 'openai-chat-completions'
+      ) {
+        log(`Applying protocol adapter anthropic-messages -> openai-chat-completions via provider "${selectedRoutePlan.provider}"`)
+        const transformed = transformAnthropicMessagesRequestToOpenAIChat(requestForPeer)
+        if (!transformed) {
+          res.writeHead(502, { 'content-type': 'text/plain' })
+          res.end('Failed to transform Anthropic request for selected provider protocol')
+          return
+        }
+        requestForPeer = {
+          ...transformed.request,
+          headers: {
+            ...transformed.request.headers,
+            'x-antseed-provider': selectedRoutePlan.provider,
+          },
+        }
+        adaptResponse = (response: SerializedHttpResponse) =>
+          transformOpenAIChatResponseToAnthropicMessage(response, {
+            streamRequested: transformed.streamRequested,
+            fallbackModel: transformed.requestedModel,
+          })
+        forceDisableUpstreamStreaming = true
+      } else {
+        res.writeHead(502, { 'content-type': 'text/plain' })
+        res.end('Unsupported protocol transformation path')
+        return
+      }
+    }
+
     log(`Routing to peer ${selectedPeer.peerId.slice(0, 12)}...`)
 
     // Forward through P2P
-    const wantsStreaming = requestWantsStreaming(headers, serializedReq.body)
+    const wantsStreaming = !forceDisableUpstreamStreaming
+      && requestWantsStreaming(requestForPeer.headers, requestForPeer.body)
     const startTime = Date.now()
     try {
       if (wantsStreaming) {
         let streamed = false
-        const response = await this._node.sendRequestStream(selectedPeer, serializedReq, {
+        const response = await this._node.sendRequestStream(selectedPeer, requestForPeer, {
           onResponseStart: (startResponse: SerializedHttpResponse, metadata: RequestStreamResponseMetadata) => {
             if (!metadata.streaming) return
             streamed = true
             const streamingHeaders = attachStreamingAntseedHeaders(
               startResponse.headers,
               selectedPeer,
-              serializedReq.requestId,
+              requestForPeer.requestId,
             )
             res.writeHead(startResponse.statusCode, streamingHeaders)
             if (startResponse.body.length > 0) {
@@ -675,7 +838,7 @@ export class BuyerProxy {
         const latencyMs = Date.now() - startTime
         log(`Response: ${response.statusCode} (${latencyMs}ms, ${response.body.length} bytes)`)
 
-        const telemetry = computeResponseTelemetry(serializedReq, response.headers, response.body, selectedPeer)
+        const telemetry = computeResponseTelemetry(requestForPeer, response.headers, response.body, selectedPeer)
         if (router) {
           router.onResult(selectedPeer, {
             success: response.statusCode < 500,
@@ -693,24 +856,27 @@ export class BuyerProxy {
             response.headers,
             selectedPeer,
             telemetry,
-            serializedReq.requestId,
+            requestForPeer.requestId,
             latencyMs,
           )
           res.writeHead(response.statusCode, responseHeaders)
           res.end(Buffer.from(response.body))
         }
       } else {
-        const response = await this._node.sendRequest(selectedPeer, serializedReq)
+        let response = await this._node.sendRequest(selectedPeer, requestForPeer)
+        if (adaptResponse) {
+          response = adaptResponse(response)
+        }
         const latencyMs = Date.now() - startTime
 
         log(`Response: ${response.statusCode} (${latencyMs}ms, ${response.body.length} bytes)`)
 
-        const telemetry = computeResponseTelemetry(serializedReq, response.headers, response.body, selectedPeer)
+        const telemetry = computeResponseTelemetry(requestForPeer, response.headers, response.body, selectedPeer)
         const responseHeaders = attachAntseedTelemetryHeaders(
           response.headers,
           selectedPeer,
           telemetry,
-          serializedReq.requestId,
+          requestForPeer.requestId,
           latencyMs,
         )
 

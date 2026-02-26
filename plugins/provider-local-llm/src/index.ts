@@ -1,4 +1,4 @@
-import type { AntseedProviderPlugin, Provider } from '@antseed/node';
+import type { AntseedProviderPlugin, Provider, ModelApiProtocol } from '@antseed/node';
 import { BaseProvider, StaticTokenProvider } from '@antseed/provider-core';
 
 function parseNonNegativeNumber(raw: string | undefined, key: string, fallback: number): number {
@@ -7,6 +7,14 @@ function parseNonNegativeNumber(raw: string | undefined, key: string, fallback: 
     throw new Error(`${key} must be a non-negative number`);
   }
   return parsed;
+}
+
+function buildModelApiProtocols(
+  models: string[],
+  protocol: ModelApiProtocol,
+): Record<string, ModelApiProtocol[]> | undefined {
+  if (models.length === 0) return undefined;
+  return Object.fromEntries(models.map((model) => [model, [protocol]]));
 }
 
 const plugin: AntseedProviderPlugin = {
@@ -43,6 +51,7 @@ const plugin: AntseedProviderPlugin = {
     const allowedModels = config['ANTSEED_ALLOWED_MODELS']
       ? config['ANTSEED_ALLOWED_MODELS'].split(',').map((s: string) => s.trim())
       : [];
+    const modelApiProtocols = buildModelApiProtocols(allowedModels, 'openai-chat-completions');
 
     const tokenProvider = apiKey ? new StaticTokenProvider(apiKey) : undefined;
 
@@ -50,6 +59,7 @@ const plugin: AntseedProviderPlugin = {
       name: 'local-llm',
       models: allowedModels,
       pricing,
+      ...(modelApiProtocols ? { modelApiProtocols } : {}),
       relay: {
         baseUrl,
         authHeaderName: 'authorization',

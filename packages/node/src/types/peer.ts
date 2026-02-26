@@ -1,3 +1,5 @@
+import type { ModelApiProtocol } from "./model-api.js";
+
 /**
  * A PeerId is the hex-encoded Ed25519 public key (64 hex chars = 32 bytes).
  * This is the canonical identifier for any peer in the network.
@@ -29,6 +31,10 @@ export interface ProviderModelCategoryMatrixEntry {
   models: Record<string, string[]>;
 }
 
+export interface ProviderModelApiProtocolMatrixEntry {
+  models: Record<string, ModelApiProtocol[]>;
+}
+
 /** Information about a known peer. */
 export interface PeerInfo {
   /** Unique peer identifier (Ed25519 public key hex). */
@@ -47,6 +53,8 @@ export interface PeerInfo {
   providerPricing?: Record<string, ProviderPricingMatrixEntry>;
   /** Provider/model category tags announced by seller. */
   providerModelCategories?: Record<string, ProviderModelCategoryMatrixEntry>;
+  /** Provider/model API protocols announced by seller. */
+  providerModelApiProtocols?: Record<string, ProviderModelApiProtocolMatrixEntry>;
   /** Deterministic fallback default input price (USD per 1M tokens). */
   defaultInputUsdPerMillion?: number;
   /** Deterministic fallback default output price (USD per 1M tokens). */

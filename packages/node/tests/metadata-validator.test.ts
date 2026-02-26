@@ -8,6 +8,7 @@ import {
   MAX_REGION_LENGTH,
   MAX_DISPLAY_NAME_LENGTH,
   MAX_MODEL_CATEGORY_LENGTH,
+  MAX_MODEL_API_PROTOCOLS_PER_MODEL,
 } from '../src/discovery/metadata-validator.js';
 import { METADATA_VERSION, type PeerMetadata } from '../src/discovery/peer-metadata.js';
 
@@ -301,6 +302,71 @@ describe('validateMetadata', () => {
       ],
     }));
     expect(errors.some((e) => e.field.includes('modelCategories.m1'))).toBe(true);
+  });
+
+  it('should reject model API protocols for a model not listed by provider', () => {
+    const errors = validateMetadata(validMetadata({
+      providers: [
+        {
+          provider: 'test',
+          models: ['m1'],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 1,
+          },
+          modelApiProtocols: {
+            m2: ['openai-chat-completions'],
+          },
+          maxConcurrency: 1,
+          currentLoad: 0,
+        },
+      ],
+    }));
+    expect(errors.some((e) => e.field.includes('modelApiProtocols.m2'))).toBe(true);
+  });
+
+  it('should reject unsupported model API protocol values', () => {
+    const errors = validateMetadata(validMetadata({
+      providers: [
+        {
+          provider: 'test',
+          models: ['m1'],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 1,
+          },
+          modelApiProtocols: {
+            m1: ['not-a-real-protocol' as any],
+          },
+          maxConcurrency: 1,
+          currentLoad: 0,
+        },
+      ],
+    }));
+    expect(errors.some((e) => e.field.includes('modelApiProtocols.m1'))).toBe(true);
+  });
+
+  it('should reject too many model API protocols per model', () => {
+    const errors = validateMetadata(validMetadata({
+      providers: [
+        {
+          provider: 'test',
+          models: ['m1'],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 1,
+          },
+          modelApiProtocols: {
+            m1: Array.from({ length: MAX_MODEL_API_PROTOCOLS_PER_MODEL + 1 }, (_, i) =>
+              i % 2 === 0 ? 'openai-chat-completions' : 'anthropic-messages',
+            ),
+          },
+          maxConcurrency: 1,
+          currentLoad: 0,
+        },
+      ],
+    }));
+    expect(errors.some((e) => e.field.includes('modelApiProtocols.m1'))).toBe(true);
   });
 });
 
