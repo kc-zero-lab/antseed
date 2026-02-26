@@ -55,7 +55,7 @@ export function decodeFrame(
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const rawType = view.getUint8(0);
   if (!isValidMessageType(rawType)) {
-    return null;
+    throw new Error(`Invalid message type: 0x${rawType.toString(16).padStart(2, "0")}`);
   }
   const type = rawType as MessageType;
   const messageId = view.getUint32(1);
@@ -101,9 +101,9 @@ export class FrameDecoder {
       let result: ReturnType<typeof decodeFrame>;
       try {
         result = decodeFrame(this._buffer);
-      } catch {
+      } catch (err) {
         this._buffer = new Uint8Array(0);
-        break;
+        throw err;
       }
       if (!result) break;
 

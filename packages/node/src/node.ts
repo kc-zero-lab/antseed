@@ -111,6 +111,10 @@ export interface NodeConfig {
   signalingPort?: number;     // Default: 6882 for seller
   bootstrapNodes?: Array<{ host: string; port: number }>;
   requestTimeoutMs?: number;  // Default: 30000
+  /** Maximum buffered body size (bytes) while reconstructing streaming responses. Default: 16 MiB. */
+  maxStreamBufferBytes?: number;
+  /** Maximum wall time allowed for a streaming response. Default: 5 minutes. */
+  maxStreamDurationMs?: number;
   /** Allow private/loopback IPs in DHT lookups. Default: false. Set true for local testing. */
   allowPrivateIPs?: boolean;
   /** Optional seller-side payment runtime wiring. */
@@ -456,12 +460,16 @@ export class AntseedNode extends EventEmitter {
     const startTime = Date.now();
     return new Promise<SerializedHttpResponse>((resolve, reject) => {
       const timeoutMs = this._config.requestTimeoutMs ?? 30_000;
+      const maxStreamBufferBytes = Math.max(1, this._config.maxStreamBufferBytes ?? 16 * 1024 * 1024);
+      const maxStreamDurationMs = Math.max(1, this._config.maxStreamDurationMs ?? 5 * 60_000);
       // Idle timeout for streaming: resets on each chunk so long-running
       // streams (thinking models, large outputs) stay alive as long as
       // data keeps flowing.
       const streamIdleTimeoutMs = Math.max(timeoutMs, 60_000);
       let settled = false;
       let streamStarted = false;
+      let streamStartedAtMs = 0;
+      let streamBufferedBytes = 0;
       let streamStartResponse: SerializedHttpResponse | null = null;
       const streamChunks: Uint8Array[] = [];
       let activeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -499,8 +507,11 @@ export class AntseedNode extends EventEmitter {
       mux.sendProxyRequest(
         req,
         (response: SerializedHttpResponse, metadata) => {
+          if (settled) return;
           if (metadata.streamingStart) {
             streamStarted = true;
+            streamStartedAtMs = Date.now();
+            streamBufferedBytes = 0;
             streamStartResponse = this._stripStreamingHeader(response);
             // Switch to streaming idle timeout: resets on each chunk.
             resetTimeout(streamIdleTimeoutMs);
@@ -512,10 +523,27 @@ export class AntseedNode extends EventEmitter {
           finish(response);
         },
         (chunk) => {
+          if (settled) return;
           if (!streamStarted) return;
 
           // Reset idle timeout on each chunk so streaming stays alive.
           resetTimeout(streamIdleTimeoutMs);
+
+          if (Date.now() - streamStartedAtMs > maxStreamDurationMs) {
+            mux.cancelProxyRequest(req.requestId);
+            fail(new Error(`Stream ${req.requestId} exceeded max duration (${maxStreamDurationMs}ms)`));
+            return;
+          }
+
+          if (chunk.data.length > 0) {
+            const nextBufferedBytes = streamBufferedBytes + chunk.data.length;
+            if (nextBufferedBytes > maxStreamBufferBytes) {
+              mux.cancelProxyRequest(req.requestId);
+              fail(new Error(`Stream ${req.requestId} exceeded max buffered size (${maxStreamBufferBytes} bytes)`));
+              return;
+            }
+            streamBufferedBytes = nextBufferedBytes;
+          }
 
           callbacks?.onResponseChunk?.(chunk);
 
@@ -594,7 +622,15 @@ export class AntseedNode extends EventEmitter {
   private _wireConnection(conn: PeerConnection, peerId: PeerId): void {
     const decoder = new FrameDecoder();
     conn.on("message", (data: Uint8Array) => {
-      const frames = decoder.feed(data);
+      let frames: ReturnType<typeof decoder.feed>;
+      try {
+        frames = decoder.feed(data);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        debugWarn(`[Node] Failed to decode frame from ${peerId.slice(0, 12)}...: ${message}`);
+        conn.fail(err instanceof Error ? err : new Error(message));
+        return;
+      }
       const proxyMux = this._muxes.get(peerId);
       const paymentMux = this._paymentMuxes.get(peerId);
       for (const frame of frames) {
