@@ -82,6 +82,15 @@ describe('encodeFrame / decodeFrame', () => {
     expect(() => decodeFrame(buf)).toThrow('exceeds maximum');
   });
 
+  it('should throw for invalid message type', () => {
+    const buf = new Uint8Array(FRAME_HEADER_SIZE);
+    const view = new DataView(buf.buffer);
+    view.setUint8(0, 0x99);
+    view.setUint32(1, 1);
+    view.setUint32(5, 0);
+    expect(() => decodeFrame(buf)).toThrow('Invalid message type');
+  });
+
   it('should handle all message types', () => {
     for (const type of Object.values(MessageType).filter((v) => typeof v === 'number') as MessageType[]) {
       const msg: FramedMessage = { type, messageId: 1, payload: new Uint8Array(0) };
@@ -150,6 +159,18 @@ describe('FrameDecoder', () => {
     decoder.feed(new Uint8Array(5)); // partial data
     expect(decoder.bufferedBytes).toBe(5);
     decoder.reset();
+    expect(decoder.bufferedBytes).toBe(0);
+  });
+
+  it('should clear buffered data and throw on invalid frame type', () => {
+    const decoder = new FrameDecoder();
+    const buf = new Uint8Array(FRAME_HEADER_SIZE);
+    const view = new DataView(buf.buffer);
+    view.setUint8(0, 0x99);
+    view.setUint32(1, 1);
+    view.setUint32(5, 0);
+
+    expect(() => decoder.feed(buf)).toThrow('Invalid message type');
     expect(decoder.bufferedBytes).toBe(0);
   });
 });
