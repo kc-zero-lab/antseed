@@ -157,7 +157,10 @@ export default function Navbar(): JSX.Element {
             letterSpacing: '3px',
             textTransform: 'uppercase',
             textDecoration: 'none',
-            transition: 'color 0.2s',
+            transition: 'color 0.2s, border-color 0.2s',
+            border: '1px solid rgba(139, 148, 158, 0.4)',
+            borderRadius: '6px',
+            padding: '5px 12px',
           }}
         >
           Docs
