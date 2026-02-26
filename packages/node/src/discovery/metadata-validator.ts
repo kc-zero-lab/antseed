@@ -89,6 +89,7 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
   // each provider
   for (let i = 0; i < metadata.providers.length; i++) {
     const p = metadata.providers[i]!;
+    const hasWildcardModels = p.models.length === 0;
 
     // models count
     if (p.models.length > MAX_MODELS_PER_PROVIDER) {
@@ -143,7 +144,7 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
 
     if (p.modelCategories !== undefined) {
       for (const [modelName, categories] of Object.entries(p.modelCategories)) {
-        if (!p.models.includes(modelName)) {
+        if (!hasWildcardModels && !p.models.includes(modelName)) {
           errors.push({
             field: `providers[${i}].modelCategories.${modelName}`,
             message: "Model categories must reference a model listed in providers[].models",
@@ -198,7 +199,7 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
 
     if (p.modelApiProtocols !== undefined) {
       for (const [modelName, protocols] of Object.entries(p.modelApiProtocols)) {
-        if (!p.models.includes(modelName)) {
+        if (!hasWildcardModels && !p.models.includes(modelName)) {
           errors.push({
             field: `providers[${i}].modelApiProtocols.${modelName}`,
             message: "Model API protocols must reference a model listed in providers[].models",

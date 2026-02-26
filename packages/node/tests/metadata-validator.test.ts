@@ -283,6 +283,27 @@ describe('validateMetadata', () => {
     expect(errors.some((e) => e.field.includes('modelCategories.m2'))).toBe(true);
   });
 
+  it('should allow model categories when provider declares wildcard models', () => {
+    const errors = validateMetadata(validMetadata({
+      providers: [
+        {
+          provider: 'test',
+          models: [],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 1,
+          },
+          modelCategories: {
+            'any-model': ['privacy'],
+          },
+          maxConcurrency: 1,
+          currentLoad: 0,
+        },
+      ],
+    }));
+    expect(errors.some((e) => e.field.includes('modelCategories.any-model'))).toBe(false);
+  });
+
   it('should reject invalid model category value', () => {
     const errors = validateMetadata(validMetadata({
       providers: [
@@ -323,6 +344,27 @@ describe('validateMetadata', () => {
       ],
     }));
     expect(errors.some((e) => e.field.includes('modelApiProtocols.m2'))).toBe(true);
+  });
+
+  it('should allow model API protocols when provider declares wildcard models', () => {
+    const errors = validateMetadata(validMetadata({
+      providers: [
+        {
+          provider: 'test',
+          models: [],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 1,
+          },
+          modelApiProtocols: {
+            'any-model': ['openai-chat-completions'],
+          },
+          maxConcurrency: 1,
+          currentLoad: 0,
+        },
+      ],
+    }));
+    expect(errors.some((e) => e.field.includes('modelApiProtocols.any-model'))).toBe(false);
   });
 
   it('should reject unsupported model API protocol values', () => {
