@@ -92,64 +92,60 @@ export default function Navbar(): JSX.Element {
         height: '73px',
       }}
     >
-      <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
-        <Link
-          to="/"
-          onClick={scrollToTop}
+      <Link
+        to="/"
+        onClick={scrollToTop}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          textDecoration: 'none',
+        }}
+      >
+        <NavLogo />
+        <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            textDecoration: 'none',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            fontSize: '18px',
+            letterSpacing: '-1px',
           }}
         >
-          <NavLogo />
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 700,
-              fontSize: '18px',
-              letterSpacing: '-1px',
-            }}
-          >
-            <span style={{color: '#e6edf3'}}>ANT</span>
-            <span style={{color: '#3dffa2'}}>SEED</span>
-          </span>
-        </Link>
-        <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '8px'}}>
-          <a
-            href="https://github.com/antseed"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="custom-nav-link"
-            style={iconLinkStyle}
-            title="GitHub"
-          >
-            <GitHubIcon />
-          </a>
-          <a
-            href="https://x.com/antseedai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="custom-nav-link"
-            style={iconLinkStyle}
-            title="X (Twitter)"
-          >
-            <XIcon />
-          </a>
-          <a
-            href="https://t.me/antseed"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="custom-nav-link"
-            style={iconLinkStyle}
-            title="Telegram"
-          >
-            <TelegramIcon />
-          </a>
-        </div>
-      </div>
-      <div style={{display: 'flex', alignItems: 'center'}}>
+          <span style={{color: '#e6edf3'}}>ANT</span>
+          <span style={{color: '#3dffa2'}}>SEED</span>
+        </span>
+      </Link>
+      <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
+        <a
+          href="https://github.com/antseed"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="custom-nav-link"
+          style={iconLinkStyle}
+          title="GitHub"
+        >
+          <GitHubIcon />
+        </a>
+        <a
+          href="https://x.com/antseedai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="custom-nav-link"
+          style={iconLinkStyle}
+          title="X (Twitter)"
+        >
+          <XIcon />
+        </a>
+        <a
+          href="https://t.me/antseed"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="custom-nav-link"
+          style={iconLinkStyle}
+          title="Telegram"
+        >
+          <TelegramIcon />
+        </a>
         <Link
           to={docsTo}
           onClick={scrollToTop}
