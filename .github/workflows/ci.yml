@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # Build in dependency order so each tier's tests can resolve imports
+      - name: Build tier 0 (node)
+        run: pnpm run build:tier0
+
+      - name: Build tier 1 (provider-core, router-core)
+        run: pnpm run build:tier1
+
+      - name: Build tier 2 (plugins)
+        run: pnpm run build:tier2
+
+      - name: Build tier 3 (dashboard)
+        run: pnpm run build:tier3
+
+      # CLI test script builds itself; desktop has no tests — skip tier4
+      - name: Test
+        run: pnpm -r run test
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build tier 0 (node)
+        run: pnpm run build:tier0
+
+      - name: Build tier 1 (provider-core, router-core)
+        run: pnpm run build:tier1
+
+      - name: Build tier 2 (plugins)
+        run: pnpm run build:tier2
+
+      - name: Build tier 3 (dashboard)
+        run: pnpm run build:tier3
+
+      - name: Typecheck
+        run: pnpm run typecheck
