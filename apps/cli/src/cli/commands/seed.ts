@@ -15,7 +15,9 @@ import { loadProviderPlugin, buildPluginConfig } from '../../plugins/loader.js'
 import { resolveEffectiveSellerConfig, type SellerRuntimeOverrides } from '../../config/effective.js'
 import type { SellerCLIConfig } from '../../config/types.js'
 
-const STATE_FILE = join(homedir(), '.antseed', 'daemon.state.json')
+function getStateFile(dataDir: string): string {
+  return join(dataDir, 'daemon.state.json')
+}
 
 /** Map config file provider entry to env-style key/value pairs for the plugin. */
 function providerConfigToEnv(p: CLIProviderConfig): Record<string, string> {
@@ -175,6 +177,8 @@ export function registerSeedCommand(program: Command): void {
     .option('-r, --reserve <number>', 'runtime-only reserve floor override (does not write config file)', parseFloat)
     .option('--input-usd-per-million <number>', 'runtime-only input pricing override in USD per 1M tokens', parseFloat)
     .option('--output-usd-per-million <number>', 'runtime-only output pricing override in USD per 1M tokens', parseFloat)
+    .option('--dht-port <number>', 'UDP port for DHT (default: 6881)', parseInt)
+    .option('--signaling-port <number>', 'TCP port for P2P signaling (default: 6882)', parseInt)
     .action(async (options) => {
       const globalOpts = getGlobalOptions(program)
       const config = await loadConfig(globalOpts.config)
@@ -311,11 +315,16 @@ export function registerSeedCommand(program: Command): void {
 
       const nodeSpinner = ora('Starting seeding daemon...').start()
 
+      const dhtPort = options.dhtPort as number | undefined
+      const signalingPort = options.signalingPort as number | undefined
+
       const node = new AntseedNode({
         role: 'seller',
         displayName: config.identity.displayName,
         bootstrapNodes,
         dataDir: globalOpts.dataDir,
+        ...(dhtPort ? { dhtPort } : {}),
+        ...(signalingPort ? { signalingPort } : {}),
         payments: {
           enabled: paymentsEnabled,
           paymentMethod: preferredMethod,
@@ -464,7 +473,7 @@ export function registerSeedCommand(program: Command): void {
 
         stateWriteInFlight = true
         try {
-          await writeFile(STATE_FILE, JSON.stringify(buildDaemonState(), null, 2))
+          await writeFile(getStateFile(globalOpts.dataDir), JSON.stringify(buildDaemonState(), null, 2))
         } finally {
           stateWriteInFlight = false
           if (stateWritePending) {
@@ -495,7 +504,7 @@ export function registerSeedCommand(program: Command): void {
         node.off('session:finalized', scheduleDaemonStateWrite)
         nodeSpinner.start('Shutting down seeding daemon...')
         await node.stop()
-        await unlink(STATE_FILE).catch(() => {})
+        await unlink(getStateFile(globalOpts.dataDir)).catch(() => {})
         nodeSpinner.succeed('Seeding daemon stopped. Sessions finalized.')
       })
     })
