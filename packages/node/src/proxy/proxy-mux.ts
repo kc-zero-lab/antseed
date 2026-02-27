@@ -182,7 +182,15 @@ export class ProxyMux {
           // Seller side: incoming request from buyer
           const request = decodeHttpRequest(frame.payload);
           if (request.headers[ANTSEED_UPLOAD_CHUNK_HEADER] === 'chunked') {
-            // Body will arrive via HttpRequestChunk/HttpRequestEnd — start buffering
+            // Body will arrive via HttpRequestChunk/HttpRequestEnd — start buffering.
+            // If a duplicate header frame arrives for the same requestId, evict the
+            // existing entry first to prevent timer leaks and accounting drift.
+            const existing = this._pendingUploads.get(request.requestId);
+            if (existing) {
+              clearTimeout(existing.timer);
+              this._totalPendingUploadBytes -= existing.byteCount;
+              for (const c of existing.chunks) c.fill(0);
+            }
             const timer = setTimeout(
               () => this._abortUpload(request.requestId, 408, 'Upload timed out'),
               this._uploadTimeoutMs,
