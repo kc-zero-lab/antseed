@@ -122,7 +122,7 @@ describe('encodeMetadata / decodeMetadata', () => {
     expect(decoded.providers[0]!.models).toEqual([]);
   });
 
-  it('should round-trip display name and model categories', () => {
+  it('should round-trip display name, model categories, and model API protocols', () => {
     const original = makeMetadata({
       displayName: 'Node A',
       providers: [
@@ -136,6 +136,9 @@ describe('encodeMetadata / decodeMetadata', () => {
           modelCategories: {
             'claude-3-opus': ['privacy', 'coding'],
           },
+          modelApiProtocols: {
+            'claude-3-opus': ['openai-chat-completions', 'anthropic-messages'],
+          },
           maxConcurrency: 10,
           currentLoad: 3,
         },
@@ -144,6 +147,7 @@ describe('encodeMetadata / decodeMetadata', () => {
     const decoded = decodeMetadata(encodeMetadata(original));
     expect(decoded.displayName).toBe('Node A');
     expect(decoded.providers[0]!.modelCategories?.['claude-3-opus']).toEqual(['coding', 'privacy']);
+    expect(decoded.providers[0]!.modelApiProtocols?.['claude-3-opus']).toEqual(['anthropic-messages', 'openai-chat-completions']);
   });
 
   it('should decode offerings and optional trailer fields after v2 provider pricing payload', () => {
@@ -194,6 +198,31 @@ describe('encodeMetadata / decodeMetadata', () => {
     expect(decoded.version).toBe(2);
     expect(decoded.displayName).toBeUndefined();
     expect(decoded.providers[0]!.modelCategories).toBeUndefined();
+    expect(decoded.providers[0]!.modelApiProtocols).toBeUndefined();
+  });
+
+  it('should retain backward-compatible binary layout for metadata version 3', () => {
+    const v3 = makeMetadata({
+      version: 3,
+      providers: [
+        {
+          provider: 'openrouter',
+          models: ['model-a'],
+          defaultPricing: {
+            inputUsdPerMillion: 1,
+            outputUsdPerMillion: 2,
+          },
+          modelApiProtocols: {
+            'model-a': ['openai-chat-completions'],
+          },
+          maxConcurrency: 3,
+          currentLoad: 1,
+        },
+      ],
+    });
+    const decoded = decodeMetadata(encodeMetadata(v3));
+    expect(decoded.version).toBe(3);
+    expect(decoded.providers[0]!.modelApiProtocols).toBeUndefined();
   });
 });
 

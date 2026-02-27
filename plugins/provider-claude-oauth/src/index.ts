@@ -1,4 +1,4 @@
-import type { AntseedProviderPlugin, ConfigField } from '@antseed/node';
+import type { AntseedProviderPlugin, ConfigField, ModelApiProtocol } from '@antseed/node';
 import { BaseProvider, OAuthTokenProvider, StaticTokenProvider } from '@antseed/provider-core';
 
 const configSchema: ConfigField[] = [
@@ -10,6 +10,14 @@ const configSchema: ConfigField[] = [
   { key: 'ANTSEED_MAX_CONCURRENCY', label: 'Max Concurrency', type: 'number', required: false, default: 5 },
   { key: 'ANTSEED_ALLOWED_MODELS', label: 'Allowed Models', type: 'string[]', required: false },
 ];
+
+function buildModelApiProtocols(
+  models: string[],
+  protocol: ModelApiProtocol,
+): Record<string, ModelApiProtocol[]> | undefined {
+  if (models.length === 0) return undefined;
+  return Object.fromEntries(models.map((model) => [model, [protocol]]));
+}
 
 const plugin: AntseedProviderPlugin = {
   name: 'claude-oauth',
@@ -42,6 +50,7 @@ const plugin: AntseedProviderPlugin = {
     const maxConcurrency = parseInt(config['ANTSEED_MAX_CONCURRENCY'] ?? '5', 10);
     const allowedModels = (config['ANTSEED_ALLOWED_MODELS'] ?? '')
       .split(',').map(s => s.trim()).filter(Boolean);
+    const modelApiProtocols = buildModelApiProtocols(allowedModels, 'anthropic-messages');
 
     return new BaseProvider({
       name: 'claude-oauth',
@@ -52,6 +61,7 @@ const plugin: AntseedProviderPlugin = {
           outputUsdPerMillion: outputPrice,
         },
       },
+      ...(modelApiProtocols ? { modelApiProtocols } : {}),
       relay: {
         baseUrl: 'https://api.anthropic.com',
         authHeaderName: 'authorization',

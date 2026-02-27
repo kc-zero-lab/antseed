@@ -2,8 +2,11 @@ import type { PeerMetadata } from "./peer-metadata.js";
 import type { PeerOffering } from "../types/capability.js";
 import { hexToBytes, bytesToHex } from "../utils/hex.js";
 import { toPeerId } from "../types/peer.js";
+import type { ModelApiProtocol } from "../types/model-api.js";
+import { isKnownModelApiProtocol } from "../types/model-api.js";
 
 const MODEL_CATEGORIES_METADATA_VERSION = 3;
+const MODEL_API_PROTOCOLS_METADATA_VERSION = 4;
 
 /**
  * Encode metadata into binary format:
@@ -13,10 +16,13 @@ const MODEL_CATEGORIES_METADATA_VERSION = 3;
  *   [defaultInputPrice:4][defaultOutputPrice:4]
  *   [modelPricingCount:1][modelPricingEntries...]
  *   [modelCategoryCount:1][modelCategoryEntries...] (v3+ only)
+ *   [modelApiProtocolCount:1][modelApiProtocolEntries...] (v4+ only)
  *   [maxConcurrency:2][currentLoad:2]
  * modelPricingEntry: [modelLen:1][model:N][inputPrice:4][outputPrice:4]
  * modelCategoryEntry(v3+): [modelLen:1][model:N][categoryCount:1][categories...]
  * category(v3+): [categoryLen:1][category:N]
+ * modelApiProtocolEntry(v4+): [modelLen:1][model:N][protocolCount:1][protocols...]
+ * protocol(v4+): [protocolLen:1][protocol:N]
  * [displayNameFlag:1][displayNameLen:1][displayName:N] (v3+ only)
  * [signature:64]
  */
@@ -40,6 +46,7 @@ export function encodeMetadataForSigning(metadata: PeerMetadata): Uint8Array {
 function encodeBody(metadata: PeerMetadata): Uint8Array {
   const parts: Uint8Array[] = [];
   const hasModelCategoryExtensions = metadata.version >= MODEL_CATEGORIES_METADATA_VERSION;
+  const hasModelApiProtocolExtensions = metadata.version >= MODEL_API_PROTOCOLS_METADATA_VERSION;
 
   // version: 1 byte
   parts.push(new Uint8Array([metadata.version]));
@@ -131,6 +138,35 @@ function encodeBody(metadata: PeerMetadata): Uint8Array {
           const categoryBytes = new TextEncoder().encode(category);
           parts.push(new Uint8Array([categoryBytes.length]));
           parts.push(categoryBytes);
+        }
+      }
+    }
+
+    if (hasModelApiProtocolExtensions) {
+      const modelApiProtocolEntries = Object.entries(p.modelApiProtocols ?? {})
+        .map(([modelName, protocols]) => {
+          const normalizedProtocols = Array.from(
+            new Set(
+              protocols
+                .map((protocol) => protocol.trim().toLowerCase())
+                .filter((protocol): protocol is ModelApiProtocol => isKnownModelApiProtocol(protocol)),
+            ),
+          ).sort();
+          return [modelName, normalizedProtocols] as const;
+        })
+        .filter(([, protocols]) => protocols.length > 0)
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      parts.push(new Uint8Array([modelApiProtocolEntries.length]));
+      for (const [modelName, protocols] of modelApiProtocolEntries) {
+        const modelNameBytes = new TextEncoder().encode(modelName);
+        parts.push(new Uint8Array([modelNameBytes.length]));
+        parts.push(modelNameBytes);
+        parts.push(new Uint8Array([protocols.length]));
+        for (const protocol of protocols) {
+          const protocolBytes = new TextEncoder().encode(protocol);
+          parts.push(new Uint8Array([protocolBytes.length]));
+          parts.push(protocolBytes);
         }
       }
     }
@@ -253,6 +289,7 @@ export function decodeMetadata(data: Uint8Array): PeerMetadata {
   checkBounds(offset, 1, data.length);
   const version = data[offset]!;
   const hasModelCategoryExtensions = version >= MODEL_CATEGORIES_METADATA_VERSION;
+  const hasModelApiProtocolExtensions = version >= MODEL_API_PROTOCOLS_METADATA_VERSION;
   offset += 1;
 
   // peerId: 32 bytes
@@ -381,6 +418,39 @@ export function decodeMetadata(data: Uint8Array): PeerMetadata {
       }
     }
 
+    let modelApiProtocols: Record<string, ModelApiProtocol[]> | undefined;
+    if (hasModelApiProtocolExtensions) {
+      checkBounds(offset, 1, data.length);
+      const modelApiProtocolCount = data[offset]!;
+      offset += 1;
+      if (modelApiProtocolCount > 0) {
+        modelApiProtocols = {};
+        for (let j = 0; j < modelApiProtocolCount; j++) {
+          checkBounds(offset, 1, data.length);
+          const protocolModelLen = data[offset]!;
+          offset += 1;
+          checkBounds(offset, protocolModelLen, data.length);
+          const protocolModelName = new TextDecoder().decode(data.slice(offset, offset + protocolModelLen));
+          offset += protocolModelLen;
+
+          checkBounds(offset, 1, data.length);
+          const protocolCount = data[offset]!;
+          offset += 1;
+          const protocols: ModelApiProtocol[] = [];
+          for (let k = 0; k < protocolCount; k++) {
+            checkBounds(offset, 1, data.length);
+            const protocolLen = data[offset]!;
+            offset += 1;
+            checkBounds(offset, protocolLen, data.length);
+            const protocol = new TextDecoder().decode(data.slice(offset, offset + protocolLen));
+            offset += protocolLen;
+            protocols.push(protocol as ModelApiProtocol);
+          }
+          modelApiProtocols[protocolModelName] = protocols;
+        }
+      }
+    }
+
     // maxConcurrency: 2 bytes uint16
     checkBounds(offset, 2, data.length);
     const maxConcView = new DataView(data.buffer, data.byteOffset + offset, 2);
@@ -402,6 +472,7 @@ export function decodeMetadata(data: Uint8Array): PeerMetadata {
       },
       ...(modelPricingCount > 0 ? { modelPricing } : {}),
       ...(modelCategories && Object.keys(modelCategories).length > 0 ? { modelCategories } : {}),
+      ...(modelApiProtocols && Object.keys(modelApiProtocols).length > 0 ? { modelApiProtocols } : {}),
       maxConcurrency,
       currentLoad,
     });

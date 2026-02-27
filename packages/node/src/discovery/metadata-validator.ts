@@ -1,5 +1,5 @@
 import type { PeerMetadata } from "./peer-metadata.js";
-import { METADATA_VERSION } from "./peer-metadata.js";
+import { METADATA_VERSION, WELL_KNOWN_MODEL_API_PROTOCOLS } from "./peer-metadata.js";
 import { encodeMetadata } from "./metadata-codec.js";
 
 export const MAX_METADATA_SIZE = 1000;
@@ -10,7 +10,9 @@ export const MAX_REGION_LENGTH = 32;
 export const MAX_DISPLAY_NAME_LENGTH = 64;
 export const MAX_MODEL_CATEGORIES_PER_MODEL = 8;
 export const MAX_MODEL_CATEGORY_LENGTH = 32;
+export const MAX_MODEL_API_PROTOCOLS_PER_MODEL = 4;
 const MODEL_CATEGORY_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+const MODEL_API_PROTOCOL_SET = new Set<string>(WELL_KNOWN_MODEL_API_PROTOCOLS);
 
 export interface ValidationError {
   field: string;
@@ -87,6 +89,7 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
   // each provider
   for (let i = 0; i < metadata.providers.length; i++) {
     const p = metadata.providers[i]!;
+    const hasWildcardModels = p.models.length === 0;
 
     // models count
     if (p.models.length > MAX_MODELS_PER_PROVIDER) {
@@ -141,7 +144,7 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
 
     if (p.modelCategories !== undefined) {
       for (const [modelName, categories] of Object.entries(p.modelCategories)) {
-        if (!p.models.includes(modelName)) {
+        if (!hasWildcardModels && !p.models.includes(modelName)) {
           errors.push({
             field: `providers[${i}].modelCategories.${modelName}`,
             message: "Model categories must reference a model listed in providers[].models",
@@ -187,6 +190,55 @@ export function validateMetadata(metadata: PeerMetadata): ValidationError[] {
             errors.push({
               field: `providers[${i}].modelCategories.${modelName}[${j}]`,
               message: "Model category values must be unique per model",
+            });
+          }
+          deduped.add(normalized);
+        }
+      }
+    }
+
+    if (p.modelApiProtocols !== undefined) {
+      for (const [modelName, protocols] of Object.entries(p.modelApiProtocols)) {
+        if (!hasWildcardModels && !p.models.includes(modelName)) {
+          errors.push({
+            field: `providers[${i}].modelApiProtocols.${modelName}`,
+            message: "Model API protocols must reference a model listed in providers[].models",
+          });
+        }
+        if (!Array.isArray(protocols) || protocols.length === 0) {
+          errors.push({
+            field: `providers[${i}].modelApiProtocols.${modelName}`,
+            message: "Model API protocols must be a non-empty string array",
+          });
+          continue;
+        }
+        if (protocols.length > MAX_MODEL_API_PROTOCOLS_PER_MODEL) {
+          errors.push({
+            field: `providers[${i}].modelApiProtocols.${modelName}`,
+            message: `Model API protocol count ${protocols.length} exceeds max ${MAX_MODEL_API_PROTOCOLS_PER_MODEL}`,
+          });
+        }
+        const deduped = new Set<string>();
+        for (let j = 0; j < protocols.length; j++) {
+          const protocol = protocols[j];
+          if (typeof protocol !== "string" || protocol.trim().length === 0) {
+            errors.push({
+              field: `providers[${i}].modelApiProtocols.${modelName}[${j}]`,
+              message: "Model API protocol must be a non-empty string",
+            });
+            continue;
+          }
+          const normalized = protocol.trim().toLowerCase();
+          if (!MODEL_API_PROTOCOL_SET.has(normalized)) {
+            errors.push({
+              field: `providers[${i}].modelApiProtocols.${modelName}[${j}]`,
+              message: `Unsupported model API protocol "${normalized}"`,
+            });
+          }
+          if (deduped.has(normalized)) {
+            errors.push({
+              field: `providers[${i}].modelApiProtocols.${modelName}[${j}]`,
+              message: "Model API protocol values must be unique per model",
             });
           }
           deduped.add(normalized);

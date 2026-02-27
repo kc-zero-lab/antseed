@@ -4,6 +4,7 @@ import type {
   SerializedHttpRequest,
   SerializedHttpResponse,
   SerializedHttpResponseChunk,
+  ModelApiProtocol,
 } from '@antseed/node';
 import { ANTSEED_STREAMING_RESPONSE_HEADER } from '@antseed/node';
 import { HttpRelay, type RelayConfig } from './http-relay.js';
@@ -12,6 +13,7 @@ export interface BaseProviderConfig {
   name: string;
   models: string[];
   pricing: Provider['pricing'];
+  modelApiProtocols?: Record<string, ModelApiProtocol[]>;
   relay: RelayConfig;
 }
 
@@ -23,6 +25,7 @@ export class BaseProvider implements Provider {
   readonly name: string;
   readonly models: string[];
   readonly pricing: Provider['pricing'];
+  readonly modelApiProtocols?: Record<string, ModelApiProtocol[]>;
   readonly maxConcurrency: number;
 
   private readonly _relay: HttpRelay;
@@ -34,6 +37,7 @@ export class BaseProvider implements Provider {
     this.name = config.name;
     this.models = config.models;
     this.pricing = config.pricing;
+    this.modelApiProtocols = config.modelApiProtocols;
     this.maxConcurrency = config.relay.maxConcurrency;
 
     this._relay = new HttpRelay(config.relay, {

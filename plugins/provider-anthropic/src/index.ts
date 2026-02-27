@@ -1,4 +1,4 @@
-import type { AntseedProviderPlugin, Provider } from '@antseed/node';
+import type { AntseedProviderPlugin, Provider, ModelApiProtocol } from '@antseed/node';
 import { BaseProvider, StaticTokenProvider } from '@antseed/provider-core';
 
 function parseNonNegativeNumber(raw: string | undefined, key: string, fallback: number): number {
@@ -42,6 +42,14 @@ function parseModelPricingJson(raw: string | undefined): Provider['pricing']['mo
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+function buildModelApiProtocols(
+  models: string[],
+  protocol: ModelApiProtocol,
+): Record<string, ModelApiProtocol[]> | undefined {
+  if (models.length === 0) return undefined;
+  return Object.fromEntries(models.map((model) => [model, [protocol]]));
+}
+
 const plugin: AntseedProviderPlugin = {
   name: 'anthropic',
   displayName: 'Anthropic',
@@ -82,11 +90,13 @@ const plugin: AntseedProviderPlugin = {
       : [];
 
     const tokenProvider = new StaticTokenProvider(apiKey);
+    const modelApiProtocols = buildModelApiProtocols(allowedModels, 'anthropic-messages');
 
     return new BaseProvider({
       name: 'anthropic',
       models: allowedModels,
       pricing,
+      ...(modelApiProtocols ? { modelApiProtocols } : {}),
       relay: {
         baseUrl: 'https://api.anthropic.com',
         authHeaderName: 'x-api-key',
