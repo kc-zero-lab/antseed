@@ -185,9 +185,13 @@ export class PeerAnnouncer {
     await this._tryAnnounceTopic(providerTopic("*"));
 
     if (this.config.offerings) {
+      const announcedCapabilities = new Set<string>();
       for (const offering of this.config.offerings) {
         await this._tryAnnounceTopic(capabilityTopic(offering.capability, offering.name));
-        await this._tryAnnounceTopic(capabilityTopic(offering.capability));
+        if (!announcedCapabilities.has(offering.capability)) {
+          announcedCapabilities.add(offering.capability);
+          await this._tryAnnounceTopic(capabilityTopic(offering.capability));
+        }
       }
     }
   }
