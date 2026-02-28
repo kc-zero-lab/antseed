@@ -125,15 +125,38 @@ export class SellerPaymentManager {
       return;
     }
 
+    // Soft balance check — warn if buyer's on-chain balance is below the requested cap.
+    // Hard rejection is not used: the contract enforces balance at charge() time, and a
+    // TOCTOU race makes a hard check unreliable. This catches obviously underfunded auths.
+    try {
+      const bal = await this._escrow.getBuyerBalance(buyerEvmAddr);
+      if (bal.available < maxAmount) {
+        debugWarn(
+          `[SellerPayment] Buyer ${buyerEvmAddr.slice(0, 10)}... balance ${bal.available} < authMax ${maxAmount} — proceeding, contract will enforce`,
+        );
+      }
+    } catch (err) {
+      debugWarn(`[SellerPayment] Could not fetch buyer balance for auth check: ${err}`);
+    }
+
     const existing = this._auths.get(buyerPeerId);
     if (existing && payload.nonce === existing.nonce + 1) {
+      // Flush any sub-threshold pending charges under the old auth before advancing nonce.
+      // Without this, charges that haven't yet reached the batch threshold are permanently lost.
+      if (existing.pendingCharge > 0n && !existing.chargeInFlight) {
+        try {
+          await this._submitCharge(existing);
+        } catch (err) {
+          debugWarn(`[SellerPayment] Failed to flush pending charges before top-up: ${err}`);
+        }
+      }
       // Top-up: advance nonce and reset authUsed
-      existing.nonce         = payload.nonce;
-      existing.authMax       = maxAmount;
-      existing.authUsed      = 0n;
-      existing.deadline      = payload.deadline;
-      existing.buyerSig      = payload.buyerSig;
-      existing.pendingCharge  = 0n;
+      existing.nonce          = payload.nonce;
+      existing.authMax        = maxAmount;
+      existing.authUsed       = 0n;
+      existing.deadline       = payload.deadline;
+      existing.buyerSig       = payload.buyerSig;
+      existing.pendingCharge  = 0n;  // clear any unflushed remainder after attempted flush
       existing.chargeInFlight = false;
       debugLog(`[SellerPayment] Top-up auth accepted: nonce=${payload.nonce} max=${maxAmount}`);
     } else {
