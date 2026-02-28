@@ -33,22 +33,21 @@ export async function verifyReputation(
 
   const reputation = await escrowClient.getReputation(metadata.evmAddress);
 
-  const actualReputation = reputation.weightedAverage;
-  const actualSessionCount = reputation.sessionCount;
-  const actualDisputeCount = reputation.disputeCount;
+  const actualReputation    = reputation.avgRating;
+  const actualSessionCount  = reputation.totalTransactions;
+  const actualDisputeCount  = 0; // dispute count no longer stored per-seller on-chain
 
   const valid =
     metadata.onChainReputation === actualReputation &&
-    metadata.onChainSessionCount === actualSessionCount &&
-    metadata.onChainDisputeCount === actualDisputeCount;
+    metadata.onChainSessionCount === actualSessionCount;
 
   return {
     valid,
     actualReputation,
     actualSessionCount,
     actualDisputeCount,
-    claimedReputation: metadata.onChainReputation,
-    claimedSessionCount: metadata.onChainSessionCount,
-    claimedDisputeCount: metadata.onChainDisputeCount,
+    claimedReputation:    metadata.onChainReputation,
+    claimedSessionCount:  metadata.onChainSessionCount,
+    claimedDisputeCount:  metadata.onChainDisputeCount,
   };
 }

@@ -1,49 +1,48 @@
-import { type AbstractSigner, solidityPackedKeccak256, getBytes } from 'ethers';
+import { type AbstractSigner, type TypedDataDomain, getBytes } from 'ethers';
 import type { Identity } from '../../p2p/identity.js';
 import { signData, verifySignature } from '../../p2p/identity.js';
 
 // =========================================================================
-// ECDSA signatures (on-chain) — verified by contract via ecrecover
+// EIP-712 — SpendingAuth (on-chain, verified by AntseedEscrow.charge())
 // =========================================================================
 
-export function buildLockMessageHash(
-  sessionId: string,
-  seller: string,
-  amount: bigint,
-): string {
-  return solidityPackedKeccak256(
-    ['bytes1', 'bytes32', 'address', 'uint256'],
-    ['0x01', sessionId, seller, amount],
-  );
+export const SPENDING_AUTH_TYPES: Record<string, import('ethers').TypedDataField[]> = {
+  SpendingAuth: [
+    { name: 'seller',    type: 'address' },
+    { name: 'sessionId', type: 'bytes32' },
+    { name: 'maxAmount', type: 'uint256' },
+    { name: 'nonce',     type: 'uint256' },
+    { name: 'deadline',  type: 'uint256' },
+  ],
+};
+
+export interface SpendingAuthMessage {
+  seller:    string;
+  sessionId: string;
+  maxAmount: bigint;
+  nonce:     number;
+  deadline:  number;
 }
 
-export function buildSettlementMessageHash(
-  sessionId: string,
-  runningTotal: bigint,
-  score: number,
-): string {
-  return solidityPackedKeccak256(
-    ['bytes32', 'uint256', 'uint8'],
-    [sessionId, runningTotal, score],
-  );
+export function makeEscrowDomain(chainId: number, contractAddress: string): TypedDataDomain {
+  return {
+    name:              'AntseedEscrow',
+    version:           '1',
+    chainId,
+    verifyingContract: contractAddress,
+  };
 }
 
-export function buildExtendLockMessageHash(
-  sessionId: string,
-  seller: string,
-  additionalAmount: bigint,
-): string {
-  return solidityPackedKeccak256(
-    ['bytes1', 'bytes32', 'address', 'uint256'],
-    ['0x02', sessionId, seller, additionalAmount],
-  );
-}
-
-export async function signMessageEcdsa(
-  signer: AbstractSigner,
-  messageHash: string,
+/**
+ * Sign an EIP-712 SpendingAuth using an ethers signer.
+ * Returns the 65-byte ECDSA signature as a 0x-prefixed hex string.
+ */
+export async function signSpendingAuth(
+  signer:          AbstractSigner,
+  domain:          TypedDataDomain,
+  msg:             SpendingAuthMessage,
 ): Promise<string> {
-  return signer.signMessage(getBytes(messageHash));
+  return signer.signTypedData(domain, SPENDING_AUTH_TYPES, msg);
 }
 
 // =========================================================================
@@ -51,12 +50,12 @@ export async function signMessageEcdsa(
 // =========================================================================
 
 export function buildReceiptMessage(
-  sessionId: Uint8Array,
+  sessionId:    Uint8Array,
   runningTotal: bigint,
   requestCount: number,
   responseHash: Uint8Array,
 ): Uint8Array {
-  if (sessionId.length !== 32) throw new Error(`sessionId must be 32 bytes, got ${sessionId.length}`);
+  if (sessionId.length   !== 32) throw new Error(`sessionId must be 32 bytes, got ${sessionId.length}`);
   if (responseHash.length !== 32) throw new Error(`responseHash must be 32 bytes, got ${responseHash.length}`);
   const msg = new Uint8Array(76);
   msg.set(sessionId, 0);
@@ -71,7 +70,7 @@ export function buildReceiptMessage(
 }
 
 export function buildAckMessage(
-  sessionId: Uint8Array,
+  sessionId:    Uint8Array,
   runningTotal: bigint,
   requestCount: number,
 ): Uint8Array {
@@ -89,7 +88,7 @@ export function buildAckMessage(
 
 export async function signMessageEd25519(
   identity: Identity,
-  message: Uint8Array,
+  message:  Uint8Array,
 ): Promise<Uint8Array> {
   return signData(identity.privateKey, message);
 }
@@ -97,7 +96,17 @@ export async function signMessageEd25519(
 export async function verifyMessageEd25519(
   publicKey: Uint8Array,
   signature: Uint8Array,
-  message: Uint8Array,
+  message:   Uint8Array,
 ): Promise<boolean> {
   return verifySignature(publicKey, signature, message);
+}
+
+// ── Legacy helpers (kept for backward compatibility with receipt/ack tests) ──
+
+/** @deprecated Use signSpendingAuth + EIP-712 instead. */
+export async function signMessageEcdsa(
+  signer:      AbstractSigner,
+  messageHash: string,
+): Promise<string> {
+  return signer.signMessage(getBytes(messageHash));
 }

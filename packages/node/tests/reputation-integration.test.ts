@@ -161,11 +161,13 @@ describe('Reputation Integration', () => {
     // Mock escrow client
     const mockEscrowClient = {
       getReputation: async (_addr: string) => ({
-        totalWeightedScore: 4000n,
-        totalWeight: 50n,
-        sessionCount: 50,
-        disputeCount: 3,
-        weightedAverage: 80,
+        avgRating:          80,
+        ratingCount:        10,
+        stakedAmount:       0n,
+        totalTransactions:  50,
+        totalVolume:        0n,
+        uniqueBuyersServed: 5,
+        ageDays:            30,
       }),
     } as any;
 
@@ -174,10 +176,10 @@ describe('Reputation Integration', () => {
     expect(result.valid).toBe(true);
     expect(result.actualReputation).toBe(80);
     expect(result.actualSessionCount).toBe(50);
-    expect(result.actualDisputeCount).toBe(3);
+    expect(result.actualDisputeCount).toBe(0);  // dispute count no longer tracked per-seller
     expect(result.claimedReputation).toBe(80);
     expect(result.claimedSessionCount).toBe(50);
-    expect(result.claimedDisputeCount).toBe(3);
+    expect(result.claimedDisputeCount).toBe(3);  // metadata still carries the claimed value
 
     // Test with mismatched data
     const mismatchedMetadata = makeMetadata({

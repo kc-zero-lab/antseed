@@ -150,9 +150,9 @@ export class PeerAnnouncer {
       if (includeOnChainReputation) {
         try {
           const reputation = await this.config.escrowClient.getReputation(evmAddress);
-          metadata.onChainReputation = reputation.weightedAverage;
-          metadata.onChainSessionCount = reputation.sessionCount;
-          metadata.onChainDisputeCount = reputation.disputeCount;
+          metadata.onChainReputation = reputation.avgRating;
+          metadata.onChainSessionCount = reputation.totalTransactions;
+          metadata.onChainDisputeCount = 0;
         } catch {
           // Silently continue without reputation data
         }
