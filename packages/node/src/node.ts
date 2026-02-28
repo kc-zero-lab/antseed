@@ -1602,9 +1602,10 @@ export class AntseedNode extends EventEmitter {
 
     session.awaitingAck = true;
 
-    // Send TopUpRequest if running total > 80% of locked amount
-    if (session.authMaxAmount > 0n && session.runningTotal * 100n > session.authMaxAmount * 80n) {
-      const additional = session.authMaxAmount; // request same cap again
+    // When SellerPaymentManager is active it handles TopUpRequest internally
+    // via _maybeRequestTopUp(). Only apply the manual fallback in dev/test mode.
+    if (!this._sellerPaymentManager && session.authMaxAmount > 0n && session.runningTotal * 100n > session.authMaxAmount * 80n) {
+      const additional = session.authMaxAmount;
       paymentMux.sendTopUpRequest({
         sessionId:           session.sessionId,
         currentUsed:         session.runningTotal.toString(),
