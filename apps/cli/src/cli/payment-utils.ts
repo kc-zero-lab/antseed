@@ -1,4 +1,5 @@
 import { BaseEscrowClient } from '@antseed/node';
+import type { PaymentsCLIConfig } from '../config/types.js';
 
 export const CHAIN_ID_MAP: Record<string, number> = {
   'base-mainnet': 8453,
@@ -10,12 +11,7 @@ export function chainNameToId(chainId: string): number {
   return CHAIN_ID_MAP[chainId] ?? 8453;
 }
 
-export function createEscrowClient(crypto: {
-  rpcUrl: string;
-  escrowContractAddress: string;
-  usdcContractAddress: string;
-  chainId: string;
-}): BaseEscrowClient {
+export function createEscrowClient(crypto: NonNullable<PaymentsCLIConfig['crypto']>): BaseEscrowClient {
   return new BaseEscrowClient({
     rpcUrl:          crypto.rpcUrl,
     contractAddress: crypto.escrowContractAddress,
