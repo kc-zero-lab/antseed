@@ -795,7 +795,6 @@ export class BuyerProxy {
     let lastStatusCode = 502
     let lastResponseBody: Buffer | null = null
     let lastResponseHeaders: Record<string, string> = { 'content-type': 'text/plain' }
-    let lastErrorMessage: string | null = null
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const availableCandidates = candidatePeers.filter((p) => !triedPeerIds.has(p.peerId))
@@ -834,7 +833,6 @@ export class BuyerProxy {
       lastStatusCode = result.statusCode
       lastResponseBody = result.responseBody
       lastResponseHeaders = result.responseHeaders
-      lastErrorMessage = result.errorMessage
 
       if (attempt < MAX_ATTEMPTS - 1) {
         log(`Peer ${selectedPeer.peerId.slice(0, 12)}... returned ${result.statusCode}, retrying with another peer (attempt ${attempt + 2}/${MAX_ATTEMPTS})`)
@@ -847,10 +845,6 @@ export class BuyerProxy {
         log(`All ${triedPeerIds.size} peer(s) failed, returning last error (${lastStatusCode})`)
         res.writeHead(lastStatusCode, lastResponseHeaders)
         res.end(lastResponseBody)
-      } else if (lastErrorMessage) {
-        log(`All ${triedPeerIds.size} peer(s) failed with connection errors`)
-        res.writeHead(502, { 'content-type': 'text/plain' })
-        res.end(`P2P request failed: ${lastErrorMessage}`)
       } else {
         const diagnostics = this._formatPeerSelectionDiagnostics(candidatePeers)
         log('No peers available for request')
