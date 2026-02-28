@@ -10,6 +10,12 @@ import {
   identityToEvmAddress,
 } from '@antseed/node';
 
+const CHAIN_IDS: Record<string, number> = {
+  'base-mainnet': 8453,
+  'base-sepolia': 84532,
+  'base-local':   31337,
+};
+
 export function registerDepositCommand(program: Command): void {
   program
     .command('deposit <amount>')
@@ -39,9 +45,10 @@ export function registerDepositCommand(program: Command): void {
       const address = identityToEvmAddress(identity);
 
       const escrowClient = new BaseEscrowClient({
-        rpcUrl: payments.crypto.rpcUrl,
+        rpcUrl:          payments.crypto.rpcUrl,
         contractAddress: payments.crypto.escrowContractAddress,
-        usdcAddress: payments.crypto.usdcContractAddress,
+        usdcAddress:     payments.crypto.usdcContractAddress,
+        chainId:         CHAIN_IDS[payments.crypto.chainId] ?? 8453,
       });
 
       console.log(chalk.dim(`Wallet: ${address}`));

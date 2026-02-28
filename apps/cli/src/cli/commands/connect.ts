@@ -293,14 +293,16 @@ export function registerConnectCommand(program: Command): void {
         try {
           const identity = await loadOrCreateIdentity(globalOpts.dataDir)
           const address = identityToEvmAddress(identity)
+          const chainIds: Record<string, number> = { 'base-mainnet': 8453, 'base-sepolia': 84532, 'base-local': 31337 }
           const escrowClient = new BaseEscrowClient({
-            rpcUrl: config.payments.crypto.rpcUrl,
+            rpcUrl:          config.payments.crypto.rpcUrl,
             contractAddress: config.payments.crypto.escrowContractAddress,
-            usdcAddress: config.payments.crypto.usdcContractAddress,
+            usdcAddress:     config.payments.crypto.usdcContractAddress,
+            chainId:         chainIds[config.payments.crypto.chainId] ?? 8453,
           })
-          const account = await escrowClient.getBuyerAccount(address)
+          const balance = await escrowClient.getBuyerBalance(address)
           console.log(chalk.dim(`Wallet: ${address}`))
-          const availUsdc = Number(account.available) / 1_000_000
+          const availUsdc = Number(balance.available) / 1_000_000
           console.log(chalk.dim(`Escrow available: ${availUsdc.toFixed(6)} USDC`))
         } catch {
           // Non-fatal — chain may not be available

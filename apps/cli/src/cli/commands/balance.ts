@@ -9,6 +9,12 @@ import {
   identityToEvmAddress,
 } from '@antseed/node';
 
+const CHAIN_IDS: Record<string, number> = {
+  'base-mainnet': 8453,
+  'base-sepolia': 84532,
+  'base-local':   31337,
+};
+
 /** Format USDC base units (6 decimals) to human-readable string. */
 function formatUsdc(baseUnits: bigint): string {
   const whole = baseUnits / 1_000_000n;
@@ -37,26 +43,31 @@ export function registerBalanceCommand(program: Command): void {
       const address = identityToEvmAddress(identity);
 
       const escrowClient = new BaseEscrowClient({
-        rpcUrl: payments.crypto.rpcUrl,
+        rpcUrl:          payments.crypto.rpcUrl,
         contractAddress: payments.crypto.escrowContractAddress,
-        usdcAddress: payments.crypto.usdcContractAddress,
+        usdcAddress:     payments.crypto.usdcContractAddress,
+        chainId:         CHAIN_IDS[payments.crypto.chainId] ?? 8453,
       });
 
       const spinner = ora('Fetching balance...').start();
 
       try {
-        const account = await escrowClient.getBuyerAccount(address);
+        const balance = await escrowClient.getBuyerBalance(address);
         const usdcBalance = await escrowClient.getUSDCBalance(address);
 
         spinner.stop();
 
+        const withdrawalReady = balance.withdrawalReadyAt > 0
+          ? new Date(balance.withdrawalReadyAt * 1000).toLocaleString()
+          : null;
+
         if (options.json) {
           console.log(JSON.stringify({
             address,
-            walletUSDC: formatUsdc(usdcBalance),
-            escrowDeposited: formatUsdc(account.deposited),
-            escrowCommitted: formatUsdc(account.committed),
-            escrowAvailable: formatUsdc(account.available),
+            walletUSDC:        formatUsdc(usdcBalance),
+            escrowAvailable:   formatUsdc(balance.available),
+            pendingWithdrawal: formatUsdc(balance.pendingWithdrawal),
+            withdrawalReadyAt: withdrawalReady,
           }, null, 2));
           return;
         }
@@ -66,9 +77,11 @@ export function registerBalanceCommand(program: Command): void {
         console.log(chalk.bold('USDC Balance (wallet): ') + chalk.green(formatUsdc(usdcBalance) + ' USDC'));
         console.log('');
         console.log(chalk.bold('Escrow Account:'));
-        console.log(`  Deposited:  ${chalk.green(formatUsdc(account.deposited) + ' USDC')}`);
-        console.log(`  Committed:  ${chalk.yellow(formatUsdc(account.committed) + ' USDC')}`);
-        console.log(`  Available:  ${chalk.green(formatUsdc(account.available) + ' USDC')}`);
+        console.log(`  Available:         ${chalk.green(formatUsdc(balance.available) + ' USDC')}`);
+        console.log(`  Pending withdrawal: ${chalk.yellow(formatUsdc(balance.pendingWithdrawal) + ' USDC')}`);
+        if (withdrawalReady) {
+          console.log(`  Withdrawal ready:   ${chalk.dim(withdrawalReady)}`);
+        }
       } catch (err) {
         spinner.fail(chalk.red(`Failed to fetch balance: ${(err as Error).message}`));
         process.exit(1);
