@@ -5,6 +5,7 @@ const configSchema: ConfigField[] = [
   { key: 'CLAUDE_ACCESS_TOKEN', label: 'Access Token', type: 'secret', required: true, description: 'Claude OAuth access token' },
   { key: 'CLAUDE_REFRESH_TOKEN', label: 'Refresh Token', type: 'secret', required: false, description: 'OAuth refresh token for auto-renewal' },
   { key: 'CLAUDE_TOKEN_EXPIRES_AT', label: 'Token Expiry', type: 'number', required: false, description: 'Epoch ms when access token expires' },
+  { key: 'CLAUDE_OAUTH_CLIENT_ID', label: 'OAuth Client ID', type: 'string', required: true, description: 'OAuth application client ID used when refreshing tokens' },
   { key: 'ANTSEED_INPUT_USD_PER_MILLION', label: 'Input Price', type: 'number', required: false, default: 10 },
   { key: 'ANTSEED_OUTPUT_USD_PER_MILLION', label: 'Output Price', type: 'number', required: false, default: 10 },
   { key: 'ANTSEED_MAX_CONCURRENCY', label: 'Max Concurrency', type: 'number', required: false, default: 5 },
@@ -31,6 +32,9 @@ const plugin: AntseedProviderPlugin = {
     const accessToken = config['CLAUDE_ACCESS_TOKEN'];
     if (!accessToken) throw new Error('CLAUDE_ACCESS_TOKEN is required');
 
+    const clientId = config['CLAUDE_OAUTH_CLIENT_ID'];
+    if (!clientId) throw new Error('CLAUDE_OAUTH_CLIENT_ID is required');
+
     const refreshToken = config['CLAUDE_REFRESH_TOKEN'];
     const expiresAt = config['CLAUDE_TOKEN_EXPIRES_AT']
       ? parseInt(config['CLAUDE_TOKEN_EXPIRES_AT'], 10)
@@ -42,6 +46,7 @@ const plugin: AntseedProviderPlugin = {
           refreshToken,
           expiresAt: expiresAt ?? Date.now() + 3600_000,
           tokenEndpoint: 'https://console.anthropic.com/v1/oauth/token',
+          clientId,
         })
       : new StaticTokenProvider(accessToken);
 
