@@ -108,6 +108,7 @@ This will download the plugin from npm, register it with the local Antseed node,
 | `CLAUDE_ACCESS_TOKEN`          | secret   | Yes      | --      | Claude OAuth access token            |
 | `CLAUDE_REFRESH_TOKEN`         | secret   | No       | --      | OAuth refresh token for auto-renewal |
 | `CLAUDE_TOKEN_EXPIRES_AT`      | number   | No       | --      | Epoch ms when access token expires   |
+| `CLAUDE_OAUTH_CLIENT_ID`       | string   | Yes      | --      | OAuth application client ID used when refreshing tokens |
 | `ANTSEED_INPUT_USD_PER_MILLION`| number   | No       | 10      | Input token price (USD per 1M)       |
 | `ANTSEED_OUTPUT_USD_PER_MILLION`| number  | No       | 10      | Output token price (USD per 1M)      |
 | `ANTSEED_MAX_CONCURRENCY`      | number   | No       | 5       | Max concurrent requests              |
