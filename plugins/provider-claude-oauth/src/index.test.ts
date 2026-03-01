@@ -16,6 +16,7 @@ describe('provider-claude-oauth plugin manifest', () => {
     expect(keys).toContain('CLAUDE_ACCESS_TOKEN');
     expect(keys).toContain('CLAUDE_REFRESH_TOKEN');
     expect(keys).toContain('CLAUDE_TOKEN_EXPIRES_AT');
+    expect(keys).toContain('CLAUDE_OAUTH_CLIENT_ID');
     expect(keys).toContain('ANTSEED_INPUT_USD_PER_MILLION');
     expect(keys).toContain('ANTSEED_OUTPUT_USD_PER_MILLION');
     expect(keys).toContain('ANTSEED_MAX_CONCURRENCY');
@@ -23,6 +24,8 @@ describe('provider-claude-oauth plugin manifest', () => {
     const accessField = plugin.configSchema!.find(f => f.key === 'CLAUDE_ACCESS_TOKEN');
     expect(accessField!.required).toBe(true);
     expect(accessField!.type).toBe('secret');
+    const clientIdField = plugin.configSchema!.find(f => f.key === 'CLAUDE_OAUTH_CLIENT_ID');
+    expect(clientIdField!.required).toBe(true);
   });
 });
 
@@ -30,6 +33,7 @@ describe('createProvider', () => {
   it('creates provider with access token only (static)', () => {
     const provider = plugin.createProvider({
       CLAUDE_ACCESS_TOKEN: 'test-access-token',
+      CLAUDE_OAUTH_CLIENT_ID: 'test-client-id',
     });
     expect(provider).toBeDefined();
     expect(provider.name).toBe('claude-oauth');
@@ -41,6 +45,7 @@ describe('createProvider', () => {
       CLAUDE_ACCESS_TOKEN: 'test-access-token',
       CLAUDE_REFRESH_TOKEN: 'test-refresh-token',
       CLAUDE_TOKEN_EXPIRES_AT: String(Date.now() + 3600_000),
+      CLAUDE_OAUTH_CLIENT_ID: 'test-client-id',
     });
     expect(provider).toBeDefined();
     expect(provider.name).toBe('claude-oauth');
@@ -50,9 +55,14 @@ describe('createProvider', () => {
     expect(() => plugin.createProvider({})).toThrow('CLAUDE_ACCESS_TOKEN is required');
   });
 
+  it('rejects missing client ID', () => {
+    expect(() => plugin.createProvider({ CLAUDE_ACCESS_TOKEN: 'tok' })).toThrow('CLAUDE_OAUTH_CLIENT_ID is required');
+  });
+
   it('provider has correct name and pricing', () => {
     const provider = plugin.createProvider({
       CLAUDE_ACCESS_TOKEN: 'test-access-token',
+      CLAUDE_OAUTH_CLIENT_ID: 'test-client-id',
       ANTSEED_INPUT_USD_PER_MILLION: '15',
       ANTSEED_OUTPUT_USD_PER_MILLION: '30',
       ANTSEED_MAX_CONCURRENCY: '3',
