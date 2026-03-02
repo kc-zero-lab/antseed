@@ -70,6 +70,8 @@ const config: Config = {
       {property: 'og:description', content: 'Private AI inference with zero data collection. No account, no logs, no middleman.'},
       {property: 'og:type', content: 'website'},
       {name: 'twitter:card', content: 'summary_large_image'},
+      {name: 'twitter:image', content: 'https://antseed.com/og-image.jpg'},
+      {property: 'og:image', content: 'https://antseed.com/og-image.jpg'},
       {name: 'twitter:title', content: 'AntSeed — Private AI. Anonymous. Peer-to-peer.'},
       {name: 'twitter:description', content: 'Private AI inference with zero data collection. No account, no logs, no middleman.'},
     ],
