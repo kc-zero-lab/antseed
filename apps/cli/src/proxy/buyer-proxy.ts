@@ -1689,6 +1689,7 @@ export class BuyerProxy {
           transformOpenAIChatResponseToOpenAIResponses(response, {
             fallbackModel: transformed.requestedModel,
           })
+        forceDisableUpstreamStreaming = true
       } else {
         res.writeHead(502, { 'content-type': 'text/plain' })
         res.end('Unsupported protocol transformation path')

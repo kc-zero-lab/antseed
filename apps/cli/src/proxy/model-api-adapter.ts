@@ -628,6 +628,28 @@ export function transformOpenAIChatResponseToAnthropicMessage(
 
 export type ResponsesToOpenAIRequestTransformResult = AnthropicToOpenAIRequestTransformResult
 
+function convertResponsesToolsToChatTools(tools: unknown[]): unknown[] {
+  const out: unknown[] = []
+  for (const toolRaw of tools) {
+    if (!toolRaw || typeof toolRaw !== 'object') {
+      continue
+    }
+    const tool = toolRaw as Record<string, unknown>
+    if (typeof tool.name !== 'string' || tool.name.length === 0) {
+      continue
+    }
+    out.push({
+      type: 'function',
+      function: {
+        name: tool.name,
+        ...(typeof tool.description === 'string' ? { description: tool.description } : {}),
+        ...(tool.parameters && typeof tool.parameters === 'object' ? { parameters: tool.parameters } : {}),
+      },
+    })
+  }
+  return out.length > 0 ? out : tools
+}
+
 function convertResponsesInputToMessages(body: Record<string, unknown>): unknown[] {
   const out: unknown[] = []
 
@@ -648,6 +670,33 @@ function convertResponsesInputToMessages(body: Record<string, unknown>): unknown
         continue
       }
       const msg = item as Record<string, unknown>
+      const type = typeof msg.type === 'string' ? msg.type : ''
+
+      if (type === 'function_call_output') {
+        out.push({
+          role: 'tool',
+          tool_call_id: typeof msg.call_id === 'string' ? msg.call_id : '',
+          content: typeof msg.output === 'string' ? msg.output : toStringContent(msg.output),
+        })
+        continue
+      }
+
+      if (type === 'function_call') {
+        out.push({
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: typeof msg.id === 'string' ? msg.id : '',
+            type: 'function',
+            function: {
+              name: typeof msg.name === 'string' ? msg.name : '',
+              arguments: typeof msg.arguments === 'string' ? msg.arguments : '{}',
+            },
+          }],
+        })
+        continue
+      }
+
       const role = typeof msg.role === 'string' ? msg.role : 'user'
       out.push({ role, content: toStringContent(msg.content) })
     }
@@ -693,7 +742,7 @@ export function transformOpenAIResponsesRequestToOpenAIChat(
     transformedBody.top_p = body.top_p
   }
   if (Array.isArray(body.tools)) {
-    transformedBody.tools = body.tools
+    transformedBody.tools = convertResponsesToolsToChatTools(body.tools)
   }
   if (body.tool_choice !== undefined) {
     transformedBody.tool_choice = body.tool_choice
@@ -777,6 +826,8 @@ export function transformOpenAIChatResponseToOpenAIResponses(
     id,
     object: 'response',
     model,
+    status: 'completed',
+    created_at: Math.floor(Date.now() / 1000),
     output: outputItems,
     output_text: textContent,
     usage: {
