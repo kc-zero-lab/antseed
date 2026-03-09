@@ -93,7 +93,7 @@ export function AppShell() {
       <div className="app-container">
         <Sidebar activeView={activeView} onSelectView={setActiveView} />
         <main className="main-content">
-          <ViewHost activeView={activeView} />
+          <ViewHost activeView={activeView} onSelectView={setActiveView} />
         </main>
       </div>
       <StreamingIndicator />

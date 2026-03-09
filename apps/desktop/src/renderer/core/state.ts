@@ -119,6 +119,7 @@ export type RendererUiState = {
   chatConversationTitle: string;
   chatConversations: unknown[];
   chatConversationsLoaded: boolean;
+  chatProxyPort: number;
   chatMessages: unknown[];
   chatStreamingMessage: ChatMessage | null;
   chatSending: boolean;
@@ -222,6 +223,7 @@ export function createInitialUiState(): RendererUiState {
     chatConversationTitle: 'Conversation',
     chatConversations: [],
     chatConversationsLoaded: false,
+    chatProxyPort: 0,
     chatMessages: [],
     chatStreamingMessage: null,
     chatSending: false,

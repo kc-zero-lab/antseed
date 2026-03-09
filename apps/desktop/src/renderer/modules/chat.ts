@@ -764,6 +764,7 @@ export function initChatModule({
         if (running) {
           proxyState = 'online';
           proxyPort = Number(port) || 0;
+          uiState.chatProxyPort = proxyPort;
           uiState.chatProxyStatus = { tone: 'active', label: `Proxy :${port}` };
           notifyUiStateChanged();
           if (previousProxyState !== 'online') {
@@ -775,6 +776,7 @@ export function initChatModule({
         } else {
           proxyState = 'offline';
           proxyPort = 0;
+          uiState.chatProxyPort = 0;
           uiState.chatProxyStatus = { tone: 'idle', label: 'Proxy offline' };
           notifyUiStateChanged();
           setModelCatalogStatus('idle', 'Models unavailable (proxy offline)');
@@ -786,6 +788,7 @@ export function initChatModule({
     } catch {
       proxyState = 'offline';
       proxyPort = 0;
+      uiState.chatProxyPort = 0;
       uiState.chatProxyStatus = { tone: 'idle', label: 'Proxy offline' };
       notifyUiStateChanged();
       setModelCatalogStatus('idle', 'Models unavailable (proxy offline)');

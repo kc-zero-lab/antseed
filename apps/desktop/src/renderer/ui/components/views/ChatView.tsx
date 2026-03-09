@@ -41,9 +41,10 @@ function getMessageKey(message: ChatMessage, index: number): string {
 
 type ChatViewProps = {
   active: boolean;
+  onSelectView?: (view: import('../../types').ViewName) => void;
 };
 
-export function ChatView({ active }: ChatViewProps) {
+export function ChatView({ active, onSelectView }: ChatViewProps) {
   const snap = useUiSnapshot();
   const actions = useActions();
   const [inputValue, setInputValue] = useState('');
@@ -180,6 +181,12 @@ export function ChatView({ active }: ChatViewProps) {
                 <div className={styles.chatWelcomeSubtitle}>
                   Start typing. Best provider auto-selected by reputation.
                 </div>
+                <button
+                  className={styles.chatExternalHint}
+                  onClick={() => onSelectView?.('external-clients')}
+                >
+                  Use from Claude Code, Codex, or any external client →
+                </button>
               </div>
             ) : (
               visibleMessages.map((msg, i) => (
