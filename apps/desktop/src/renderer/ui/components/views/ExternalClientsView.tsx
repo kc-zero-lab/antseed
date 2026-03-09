@@ -8,46 +8,81 @@ type ExternalClientsViewProps = {
   active: boolean;
 };
 
-type ToolCard = {
+type Step = { label: string; command?: string };
+
+type Tool = {
   name: string;
+  tag: string;
+  format: 'anthropic' | 'openai';
   description: string;
+  steps: Step[];
   envVar: string;
-  getValue: (port: number) => string;
-  hint: string;
+  getEndpoint: (port: number) => string;
+  persist: string;
 };
 
-const TOOLS: ToolCard[] = [
+const TOOLS: Tool[] = [
   {
     name: 'Claude Code',
-    description: 'Set the base URL before running claude, or export it in your shell profile.',
+    tag: 'claude',
+    format: 'anthropic',
+    description: 'Anthropic\'s official CLI agent. Runs in your terminal and uses the Anthropic API format.',
     envVar: 'ANTHROPIC_BASE_URL',
-    getValue: (port) => `http://localhost:${port}`,
-    hint: 'ANTHROPIC_BASE_URL=http://localhost:{port} claude',
+    getEndpoint: (port) => `http://localhost:${port}`,
+    steps: [
+      { label: 'Install Claude Code', command: 'npm install -g @anthropic-ai/claude-code' },
+      { label: 'Set the proxy endpoint', command: 'export ANTHROPIC_BASE_URL=http://localhost:{port}' },
+      { label: 'Run — requests route through AntSeed', command: 'claude' },
+    ],
+    persist: 'echo \'export ANTHROPIC_BASE_URL=http://localhost:{port}\' >> ~/.zshrc',
   },
   {
     name: 'OpenCode',
-    description: 'OpenCode uses the Anthropic API format. Point it at the local proxy.',
+    tag: 'opencode',
+    format: 'anthropic',
+    description: 'Open-source AI coding agent. Uses the same Anthropic API format as Claude Code.',
     envVar: 'ANTHROPIC_BASE_URL',
-    getValue: (port) => `http://localhost:${port}`,
-    hint: 'ANTHROPIC_BASE_URL=http://localhost:{port} opencode',
+    getEndpoint: (port) => `http://localhost:${port}`,
+    steps: [
+      { label: 'Install OpenCode', command: 'npm install -g opencode-ai' },
+      { label: 'Set the proxy endpoint', command: 'export ANTHROPIC_BASE_URL=http://localhost:{port}' },
+      { label: 'Run in your project directory', command: 'opencode' },
+    ],
+    persist: 'echo \'export ANTHROPIC_BASE_URL=http://localhost:{port}\' >> ~/.zshrc',
   },
   {
     name: 'Codex',
-    description: 'OpenAI Codex CLI reads OPENAI_BASE_URL. Add /v1 to the proxy address.',
+    tag: 'codex',
+    format: 'openai',
+    description: 'OpenAI\'s CLI coding agent. Reads OPENAI_BASE_URL for a custom endpoint.',
     envVar: 'OPENAI_BASE_URL',
-    getValue: (port) => `http://localhost:${port}/v1`,
-    hint: 'OPENAI_BASE_URL=http://localhost:{port}/v1 codex',
+    getEndpoint: (port) => `http://localhost:${port}/v1`,
+    steps: [
+      { label: 'Install Codex', command: 'npm install -g @openai/codex' },
+      { label: 'Set the proxy endpoint', command: 'export OPENAI_BASE_URL=http://localhost:{port}/v1' },
+      { label: 'Also set a dummy API key if required', command: 'export OPENAI_API_KEY=antseed' },
+      { label: 'Run', command: 'codex' },
+    ],
+    persist: 'echo \'export OPENAI_BASE_URL=http://localhost:{port}/v1\' >> ~/.zshrc',
   },
   {
     name: 'Any OpenAI-compatible tool',
-    description: 'Cursor, Continue.dev, and other tools that accept a custom OpenAI base URL.',
+    tag: 'generic',
+    format: 'openai',
+    description: 'Cursor, Continue.dev, Aider, or any tool that accepts a custom OpenAI base URL.',
     envVar: 'Base URL',
-    getValue: (port) => `http://localhost:${port}/v1`,
-    hint: 'Set the OpenAI base URL in your tool\'s settings.',
+    getEndpoint: (port) => `http://localhost:${port}/v1`,
+    steps: [
+      { label: 'Find the "Custom base URL" or "OpenAI API base" setting in your tool' },
+      { label: 'Set it to the proxy endpoint below' },
+      { label: 'Set any API key field to a placeholder value (e.g. antseed)', command: 'antseed' },
+      { label: 'Select a model — requests are routed by AntSeed automatically' },
+    ],
+    persist: '',
   },
 ];
 
-function CopyButton({ value }: { value: string }) {
+function CopyButton({ value, label }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
@@ -62,8 +97,75 @@ function CopyButton({ value }: { value: string }) {
       className={`${styles.copyBtn}${copied ? ` ${styles.copied}` : ''}`}
       onClick={handleCopy}
     >
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? '✓ Copied' : (label ?? 'Copy')}
     </button>
+  );
+}
+
+function ToolCard({ tool, port, isOnline }: { tool: Tool; port: number; isOnline: boolean }) {
+  const displayPort = isOnline ? port : 8377;
+  const endpoint = tool.getEndpoint(displayPort);
+  const exportLine = tool.format === 'openai'
+    ? `export ${tool.envVar}=${endpoint}`
+    : `export ${tool.envVar}=${endpoint}`;
+  const persistLine = tool.persist.replace(/{port}/g, String(displayPort));
+
+  return (
+    <div className={styles.toolCard}>
+      <div className={styles.toolHeader}>
+        <div className={styles.toolIcon}>
+          <HugeiconsIcon icon={ComputerTerminal01Icon} size={14} strokeWidth={1.5} />
+        </div>
+        <div className={styles.toolMeta}>
+          <span className={styles.toolName}>{tool.name}</span>
+          <span className={`${styles.toolFormat} ${tool.format === 'anthropic' ? styles.formatAnthropic : styles.formatOpenai}`}>
+            {tool.format === 'anthropic' ? 'Anthropic format' : 'OpenAI format'}
+          </span>
+        </div>
+      </div>
+
+      <p className={styles.toolDesc}>{tool.description}</p>
+
+      <div className={styles.endpointRow}>
+        <span className={styles.endpointLabel}>{tool.envVar}</span>
+        <span className={styles.endpointValue}>{endpoint}</span>
+        <CopyButton value={endpoint} />
+      </div>
+
+      <div className={styles.stepsSection}>
+        <p className={styles.stepsLabel}>Setup</p>
+        <ol className={styles.stepsList}>
+          {tool.steps.map((step, i) => (
+            <li key={i} className={styles.step}>
+              <span className={styles.stepText}>{step.label}</span>
+              {step.command && (
+                <div className={styles.stepCommand}>
+                  <code className={styles.stepCode}>
+                    {step.command.replace(/{port}/g, String(displayPort))}
+                  </code>
+                  <CopyButton value={step.command.replace(/{port}/g, String(displayPort))} />
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {persistLine && (
+        <div className={styles.persistRow}>
+          <span className={styles.persistLabel}>Persist to shell</span>
+          <div className={styles.persistCommand}>
+            <code className={styles.stepCode}>{persistLine}</code>
+            <CopyButton value={persistLine} />
+          </div>
+        </div>
+      )}
+
+      <div className={styles.exportRow}>
+        <code className={styles.exportCode}>{exportLine}</code>
+        <CopyButton value={exportLine} label="Copy export" />
+      </div>
+    </div>
   );
 }
 
@@ -77,48 +179,28 @@ export function ExternalClientsView({ active }: ExternalClientsViewProps) {
         <h2>External Clients</h2>
         <div className={`${styles.proxyBadge} ${isOnline ? styles.proxyOnline : styles.proxyOffline}`}>
           <span className={styles.proxyBadgeDot} />
-          {isOnline ? `Proxy active on :${chatProxyPort}` : 'Proxy offline'}
+          {isOnline ? `Proxy active · :${chatProxyPort}` : 'Proxy offline'}
         </div>
       </div>
 
       <div className={styles.content}>
-        <p className={styles.sectionLabel}>Connect your tools</p>
-
-        {!isOnline && (
-          <div className={styles.offlineNote}>
-            The local proxy is not running yet. Start the buyer runtime from the Overview page to enable external client access.
-          </div>
-        )}
-
-        {TOOLS.map((tool) => {
-          const value = isOnline ? tool.getValue(chatProxyPort) : tool.getValue(8377);
-          const exportLine = `export ${tool.envVar}=${value}`;
-
-          return (
-            <div key={tool.name} className={styles.toolCard}>
-              <div className={styles.toolHeader}>
-                <div className={styles.toolIcon}>
-                  <HugeiconsIcon icon={ComputerTerminal01Icon} size={16} strokeWidth={1.5} />
-                </div>
-                <span className={styles.toolName}>{tool.name}</span>
-              </div>
-
-              <p className={styles.toolDesc}>{tool.description}</p>
-
-              <div className={styles.codeRow}>
-                <span className={styles.codeLabel}>{tool.envVar}</span>
-                <span className={styles.codeValue}>{value}</span>
-                <CopyButton value={value} />
-              </div>
-
-              <div className={styles.codeRow}>
-                <span className={styles.codeLabel}>export</span>
-                <span className={styles.codeValue}>{exportLine}</span>
-                <CopyButton value={exportLine} />
-              </div>
+        <div className={styles.intro}>
+          <p className={styles.introText}>
+            AntSeed runs a local proxy that routes your AI requests to the best peer on the network.
+            Any tool that supports a custom API endpoint works out of the box — no API keys needed, just point it at the proxy.
+          </p>
+          {!isOnline && (
+            <div className={styles.offlineNote}>
+              Start the buyer runtime from the Overview page to bring the proxy online.
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        <div className={styles.toolGrid}>
+          {TOOLS.map((tool) => (
+            <ToolCard key={tool.tag} tool={tool} port={chatProxyPort} isOnline={isOnline} />
+          ))}
+        </div>
       </div>
     </section>
   );

@@ -2,6 +2,8 @@ import { useRef, useEffect, useState, useCallback, useMemo, useId } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon } from '@hugeicons/core-free-icons';
 import { ArrowUp02Icon } from '@hugeicons/core-free-icons';
+import { ComputerTerminal01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { useUiSnapshot } from '../../hooks/useUiSnapshot';
 import { useActions } from '../../hooks/useActions';
 import { ChatBubble } from '../chat/ChatBubble';
@@ -185,7 +187,14 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
                   className={styles.chatExternalHint}
                   onClick={() => onSelectView?.('external-clients')}
                 >
-                  Use from Claude Code, Codex, or any external client →
+                  <span className={styles.chatExternalHintIcon}>
+                    <HugeiconsIcon icon={ComputerTerminal01Icon} size={13} strokeWidth={1.5} />
+                  </span>
+                  <span className={styles.chatExternalHintText}>
+                    <span className={styles.chatExternalHintTitle}>Use from any client</span>
+                    <span className={styles.chatExternalHintSub}>Claude Code · Codex · OpenCode · any OpenAI-compatible tool</span>
+                  </span>
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={1.5} className={styles.chatExternalHintArrow} />
                 </button>
               </div>
             ) : (
