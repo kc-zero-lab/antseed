@@ -314,19 +314,22 @@ describe('transformOpenAIResponsesRequestToOpenAIChat', () => {
     expect(body.stream).toBe(true);
   });
 
-  it('forwards tools and tool_choice', () => {
-    const tools = [{ type: 'function', function: { name: 'search', parameters: {} } }];
+  it('converts Responses API flat tools to Chat Completions nested format', () => {
+    const responsesTools = [{ type: 'function', name: 'search', description: 'Search the web', parameters: { type: 'object' } }];
     const request = makeResponsesRequest({
       body: new TextEncoder().encode(JSON.stringify({
         model: 'gpt-4.1',
         input: 'test',
-        tools,
+        tools: responsesTools,
         tool_choice: 'auto',
       })),
     });
     const result = transformOpenAIResponsesRequestToOpenAIChat(request);
     const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
-    expect(body.tools).toEqual(tools);
+    expect(body.tools).toEqual([{
+      type: 'function',
+      function: { name: 'search', description: 'Search the web', parameters: { type: 'object' } },
+    }]);
     expect(body.tool_choice).toBe('auto');
   });
 

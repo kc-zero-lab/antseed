@@ -56,6 +56,17 @@ function toStringContent(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
   }
+  // Handle a single content block object (e.g. {type:'text', text:'...'})
+  if (typeof value === 'object') {
+    const block = value as Record<string, unknown>;
+    if (block.type === 'text' && typeof block.text === 'string') {
+      return block.text;
+    }
+    if (block.type === 'tool_result') {
+      return toStringContent(block.content);
+    }
+    return '';
+  }
   return String(value);
 }
 
@@ -610,7 +621,11 @@ export function transformOpenAIChatResponseToAnthropicMessage(
 // OpenAI Responses API ↔ OpenAI Chat Completions transforms
 // ---------------------------------------------------------------------------
 
-export type ResponsesToOpenAIRequestTransformResult = AnthropicToOpenAIRequestTransformResult;
+export interface ResponsesToOpenAIRequestTransformResult {
+  request: SerializedHttpRequest;
+  streamRequested: boolean;
+  requestedModel: string | null;
+}
 
 function convertResponsesToolsToChatTools(tools: unknown[]): unknown[] {
   const out: unknown[] = [];
@@ -631,7 +646,7 @@ function convertResponsesToolsToChatTools(tools: unknown[]): unknown[] {
       },
     });
   }
-  return out.length > 0 ? out : tools;
+  return out;
 }
 
 function convertResponsesInputToMessages(body: Record<string, unknown>): unknown[] {
