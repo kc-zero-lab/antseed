@@ -174,6 +174,17 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
         </div>
       </div>
 
+      {showWelcome && (
+        <button
+          className={styles.chatExternalHint}
+          onClick={() => onSelectView?.('external-clients')}
+        >
+          <HugeiconsIcon icon={ComputerTerminal01Icon} size={13} strokeWidth={1.5} />
+          <span>Also works with Claude Code, Codex, OpenCode, or any OpenAI-compatible tool</span>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={12} strokeWidth={1.5} />
+        </button>
+      )}
+
       <div className={styles.chatContainer}>
         <div className={styles.chatMain}>
           <div className={styles.chatMessages} ref={scrollRef} data-chat-scroll>
@@ -183,19 +194,6 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
                 <div className={styles.chatWelcomeSubtitle}>
                   Start typing. Best provider auto-selected by reputation.
                 </div>
-                <button
-                  className={styles.chatExternalHint}
-                  onClick={() => onSelectView?.('external-clients')}
-                >
-                  <span className={styles.chatExternalHintIcon}>
-                    <HugeiconsIcon icon={ComputerTerminal01Icon} size={13} strokeWidth={1.5} />
-                  </span>
-                  <span className={styles.chatExternalHintText}>
-                    <span className={styles.chatExternalHintTitle}>Use from any client</span>
-                    <span className={styles.chatExternalHintSub}>Claude Code · Codex · OpenCode · any OpenAI-compatible tool</span>
-                  </span>
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={1.5} className={styles.chatExternalHintArrow} />
-                </button>
               </div>
             ) : (
               visibleMessages.map((msg, i) => (
