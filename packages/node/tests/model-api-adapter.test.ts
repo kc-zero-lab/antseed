@@ -6,6 +6,8 @@ import {
   selectTargetProtocolForRequest,
   transformAnthropicMessagesRequestToOpenAIChat,
   transformOpenAIChatResponseToAnthropicMessage,
+  transformOpenAIResponsesRequestToOpenAIChat,
+  transformOpenAIChatResponseToOpenAIResponses,
 } from '../src/proxy/model-api-adapter.js';
 
 function makeRequest(overrides?: Partial<SerializedHttpRequest>): SerializedHttpRequest {
@@ -204,5 +206,214 @@ describe('transformOpenAIChatResponseToAnthropicMessage', () => {
     expect(delta.type).toBe('input_json_delta');
     const parsedArgs = JSON.parse(delta.partial_json as string) as Record<string, unknown>;
     expect(parsedArgs).toEqual({ path: 'hello.txt' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OpenAI Responses API tests
+// ---------------------------------------------------------------------------
+
+function makeResponsesRequest(overrides?: Partial<SerializedHttpRequest>): SerializedHttpRequest {
+  return {
+    requestId: 'req-resp-1',
+    method: 'POST',
+    path: '/v1/responses',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': 'Bearer sk-test',
+    },
+    body: new TextEncoder().encode(JSON.stringify({
+      model: 'gpt-4.1',
+      input: 'What is the capital of France?',
+      instructions: 'Answer concisely',
+      max_output_tokens: 100,
+      temperature: 0.5,
+    })),
+    ...overrides,
+  };
+}
+
+describe('detectRequestModelApiProtocol – responses', () => {
+  it('detects openai responses from /v1/responses path', () => {
+    expect(
+      detectRequestModelApiProtocol(makeResponsesRequest()),
+    ).toBe('openai-responses');
+  });
+});
+
+describe('selectTargetProtocolForRequest – responses', () => {
+  it('selects passthrough when openai-responses is supported', () => {
+    const selected = selectTargetProtocolForRequest('openai-responses', ['openai-responses']);
+    expect(selected).toEqual({ targetProtocol: 'openai-responses', requiresTransform: false });
+  });
+
+  it('falls back to openai-chat-completions when responses is unsupported', () => {
+    const selected = selectTargetProtocolForRequest('openai-responses', ['openai-chat-completions']);
+    expect(selected).toEqual({ targetProtocol: 'openai-chat-completions', requiresTransform: true });
+  });
+
+  it('returns null when no compatible protocol exists', () => {
+    const selected = selectTargetProtocolForRequest('openai-responses', ['anthropic-messages']);
+    expect(selected).toBeNull();
+  });
+});
+
+describe('transformOpenAIResponsesRequestToOpenAIChat', () => {
+  it('converts string input to chat completions request', () => {
+    const result = transformOpenAIResponsesRequestToOpenAIChat(makeResponsesRequest());
+    expect(result).not.toBeNull();
+    expect(result!.request.path).toBe('/v1/chat/completions');
+    expect(result!.requestedModel).toBe('gpt-4.1');
+    expect(result!.streamRequested).toBe(false);
+
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    expect(body.model).toBe('gpt-4.1');
+    expect(body.max_tokens).toBe(100);
+    expect(body.temperature).toBe(0.5);
+    expect(body.store).toBe(false);
+
+    const messages = body.messages as Array<Record<string, unknown>>;
+    expect(messages[0]).toEqual({ role: 'system', content: 'Answer concisely' });
+    expect(messages[1]).toEqual({ role: 'user', content: 'What is the capital of France?' });
+  });
+
+  it('converts array input to messages', () => {
+    const request = makeResponsesRequest({
+      body: new TextEncoder().encode(JSON.stringify({
+        model: 'gpt-4.1',
+        input: [
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Hi there!' },
+          { role: 'user', content: 'How are you?' },
+        ],
+      })),
+    });
+    const result = transformOpenAIResponsesRequestToOpenAIChat(request);
+    expect(result).not.toBeNull();
+
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    const messages = body.messages as Array<Record<string, unknown>>;
+    expect(messages).toHaveLength(3);
+    expect(messages[0]).toEqual({ role: 'user', content: 'Hello' });
+    expect(messages[1]).toEqual({ role: 'assistant', content: 'Hi there!' });
+    expect(messages[2]).toEqual({ role: 'user', content: 'How are you?' });
+  });
+
+  it('preserves stream flag', () => {
+    const request = makeResponsesRequest({
+      body: new TextEncoder().encode(JSON.stringify({
+        model: 'gpt-4.1',
+        input: 'test',
+        stream: true,
+      })),
+    });
+    const result = transformOpenAIResponsesRequestToOpenAIChat(request);
+    expect(result!.streamRequested).toBe(true);
+
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    expect(body.stream).toBe(true);
+  });
+
+  it('forwards tools and tool_choice', () => {
+    const tools = [{ type: 'function', function: { name: 'search', parameters: {} } }];
+    const request = makeResponsesRequest({
+      body: new TextEncoder().encode(JSON.stringify({
+        model: 'gpt-4.1',
+        input: 'test',
+        tools,
+        tool_choice: 'auto',
+      })),
+    });
+    const result = transformOpenAIResponsesRequestToOpenAIChat(request);
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    expect(body.tools).toEqual(tools);
+    expect(body.tool_choice).toBe('auto');
+  });
+
+  it('returns null for non-responses path', () => {
+    const request = makeResponsesRequest({ path: '/v1/chat/completions' });
+    expect(transformOpenAIResponsesRequestToOpenAIChat(request)).toBeNull();
+  });
+});
+
+describe('transformOpenAIChatResponseToOpenAIResponses', () => {
+  it('maps text response to responses format', () => {
+    const chatResponse = makeOpenAIResponse({
+      body: new TextEncoder().encode(JSON.stringify({
+        id: 'chatcmpl-abc',
+        model: 'gpt-4.1',
+        choices: [{
+          index: 0,
+          finish_reason: 'stop',
+          message: { role: 'assistant', content: 'Paris is the capital of France.' },
+        }],
+        usage: { prompt_tokens: 15, completion_tokens: 8 },
+      })),
+    });
+
+    const result = transformOpenAIChatResponseToOpenAIResponses(chatResponse, { fallbackModel: 'fallback' });
+    const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
+
+    expect(body.id).toBe('chatcmpl-abc');
+    expect(body.object).toBe('response');
+    expect(body.model).toBe('gpt-4.1');
+    expect(body.output_text).toBe('Paris is the capital of France.');
+
+    const output = body.output as Array<Record<string, unknown>>;
+    expect(output).toHaveLength(1);
+    expect(output[0].type).toBe('message');
+    expect(output[0].role).toBe('assistant');
+
+    const usage = body.usage as Record<string, unknown>;
+    expect(usage.input_tokens).toBe(15);
+    expect(usage.output_tokens).toBe(8);
+    expect(usage.total_tokens).toBe(23);
+  });
+
+  it('maps tool calls to function_call items', () => {
+    const result = transformOpenAIChatResponseToOpenAIResponses(makeOpenAIResponse(), {
+      fallbackModel: 'fallback',
+    });
+    const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
+    const output = body.output as Array<Record<string, unknown>>;
+
+    // Should have message item + function_call item
+    const functionCall = output.find((item) => item.type === 'function_call');
+    expect(functionCall).toBeDefined();
+    expect(functionCall!.name).toBe('write');
+    expect(functionCall!.id).toBe('call_123');
+    expect(functionCall!.arguments).toBe('{"path":"hello.txt"}');
+  });
+
+  it('uses fallback model when response has none', () => {
+    const chatResponse = makeOpenAIResponse({
+      body: new TextEncoder().encode(JSON.stringify({
+        id: 'chatcmpl-x',
+        choices: [{
+          index: 0,
+          finish_reason: 'stop',
+          message: { role: 'assistant', content: 'hi' },
+        }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 },
+      })),
+    });
+    const result = transformOpenAIChatResponseToOpenAIResponses(chatResponse, {
+      fallbackModel: 'my-model',
+    });
+    const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
+    expect(body.model).toBe('my-model');
+  });
+
+  it('passes through error responses unchanged', () => {
+    const errorResponse = makeOpenAIResponse({
+      statusCode: 429,
+      body: new TextEncoder().encode(JSON.stringify({
+        error: { message: 'Rate limit exceeded', type: 'rate_limit_error' },
+      })),
+    });
+    const result = transformOpenAIChatResponseToOpenAIResponses(errorResponse, {});
+    expect(result.statusCode).toBe(429);
+    const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
+    expect(body.error).toBeDefined();
   });
 });

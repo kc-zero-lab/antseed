@@ -22,6 +22,8 @@ import {
   type TargetProtocolSelection,
   transformAnthropicMessagesRequestToOpenAIChat,
   transformOpenAIChatResponseToAnthropicMessage,
+  transformOpenAIResponsesRequestToOpenAIChat,
+  transformOpenAIChatResponseToOpenAIResponses,
 } from './model-api-adapter.js'
 
 export interface BuyerProxyConfig {
@@ -1055,9 +1057,11 @@ export class BuyerProxy {
         ? '/v1/messages'
         : normalizedPath.startsWith('/v1/chat/completions')
           ? '/v1/chat/completions'
-          : normalizedPath.startsWith('/v1/models')
-            ? '/v1/models'
-            : normalizedPath
+          : normalizedPath.startsWith('/v1/responses')
+            ? '/v1/responses'
+            : normalizedPath.startsWith('/v1/models')
+              ? '/v1/models'
+              : normalizedPath
     )
     return [
       pathGroup,
@@ -1663,6 +1667,28 @@ export class BuyerProxy {
             fallbackModel: transformed.requestedModel,
           })
         forceDisableUpstreamStreaming = true
+      } else if (
+        requestProtocol === 'openai-responses'
+        && selectedRoutePlan.selection.targetProtocol === 'openai-chat-completions'
+      ) {
+        log(`Applying protocol adapter openai-responses -> openai-chat-completions via provider "${selectedRoutePlan.provider}"`)
+        const transformed = transformOpenAIResponsesRequestToOpenAIChat(requestForPeer)
+        if (!transformed) {
+          res.writeHead(502, { 'content-type': 'text/plain' })
+          res.end('Failed to transform Responses API request for selected provider protocol')
+          return { done: true }
+        }
+        requestForPeer = {
+          ...transformed.request,
+          headers: {
+            ...transformed.request.headers,
+            'x-antseed-provider': selectedRoutePlan.provider,
+          },
+        }
+        adaptResponse = (response: SerializedHttpResponse) =>
+          transformOpenAIChatResponseToOpenAIResponses(response, {
+            fallbackModel: transformed.requestedModel,
+          })
       } else {
         res.writeHead(502, { 'content-type': 'text/plain' })
         res.end('Unsupported protocol transformation path')
