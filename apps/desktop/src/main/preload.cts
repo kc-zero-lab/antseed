@@ -269,6 +269,9 @@ const api = {
   installUpdate(): Promise<void> {
     return ipcRenderer.invoke('app:install-update') as Promise<void>;
   },
+  setDebugLogs(enabled: boolean): Promise<{ ok: true }> {
+    return ipcRenderer.invoke('desktop:set-debug-logs', enabled) as Promise<{ ok: true }>;
+  },
 };
 
 contextBridge.exposeInMainWorld('antseedDesktop', api);

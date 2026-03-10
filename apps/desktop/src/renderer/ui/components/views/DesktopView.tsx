@@ -7,6 +7,17 @@ type DesktopViewProps = {
   active: boolean;
 };
 
+function downloadLogs(logs: { timestamp: number; mode: string; stream: string; line: string }[]): void {
+  const text = logs.map((e) => `${formatClock(e.timestamp)} [${e.mode}] [${e.stream}] ${e.line}`).join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `antseed-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function DesktopView({ active }: DesktopViewProps) {
   const { logs, daemonState } = useUiSnapshot();
   const actions = useActions();
@@ -30,6 +41,9 @@ export function DesktopView({ active }: DesktopViewProps) {
       <div className="page-header">
         <h2>Logs</h2>
         <div className="page-header-right">
+          <button className="secondary" onClick={() => downloadLogs(logs)} disabled={logs.length === 0}>
+            Download Logs
+          </button>
           <button className="secondary" onClick={() => void actions.clearLogs()}>
             Clear Logs
           </button>

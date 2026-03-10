@@ -56,7 +56,7 @@ function hasDesktopDebugFlag(argv: string[]): boolean {
   return false;
 }
 
-const DESKTOP_DEBUG_ENABLED = isTruthyEnv(process.env[DESKTOP_DEBUG_ENV]) || hasDesktopDebugFlag(process.argv);
+let desktopDebugEnabled = isTruthyEnv(process.env[DESKTOP_DEBUG_ENV]) || hasDesktopDebugFlag(process.argv);
 
 function resolveAppIconPath(): string | undefined {
   const candidates = [
@@ -1588,13 +1588,13 @@ ipcMain.handle('runtime:start', async (_event, options: StartOptions) => {
 
   const startOptions: StartOptions = {
     ...options,
-    ...(DESKTOP_DEBUG_ENABLED ? { verbose: true } : {}),
+    ...(desktopDebugEnabled ? { verbose: true } : {}),
     env: {
       ...(options.env ?? {}),
-      ...(DESKTOP_DEBUG_ENABLED ? { ANTSEED_DEBUG: '1' } : {}),
+      ...(desktopDebugEnabled ? { ANTSEED_DEBUG: '1' } : {}),
     },
   };
-  if (DESKTOP_DEBUG_ENABLED) {
+  if (desktopDebugEnabled) {
     appendLog(startOptions.mode, 'system', 'Desktop debug mode enabled (ANTSEED_DEBUG=1, --verbose).');
   }
 
@@ -1622,6 +1622,11 @@ ipcMain.handle('runtime:stop', async (_event, mode: RuntimeMode) => {
     processes: getCombinedProcessState(),
     daemonState: processManager.getDaemonStateSnapshot(),
   };
+});
+
+ipcMain.handle('desktop:set-debug-logs', (_event, enabled: boolean) => {
+  desktopDebugEnabled = Boolean(enabled);
+  return { ok: true };
 });
 
 ipcMain.handle('runtime:open-dashboard', async (_event, port?: number) => {
