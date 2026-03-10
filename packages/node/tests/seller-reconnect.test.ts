@@ -73,9 +73,9 @@ describe('seller reconnect — mux-collision regression', () => {
     // conn1 closes after the reconnect (delayed TCP teardown / bot scanner eviction)
     conn1.emit('stateChange', ConnectionState.Closed);
 
-    // BUG: mux2 is silently deleted here. _muxes should still contain mux2.
+    // After the fix: stale conn1's stateChange must NOT evict mux2.
     const muxAfterClose = (node as any)._muxes.get(BUYER_PEER_ID);
-    expect(muxAfterClose).toBe(mux2); // fails before the fix
+    expect(muxAfterClose).toBe(mux2);
   });
 
   it('removes the mux when the correct (current) connection closes', () => {
