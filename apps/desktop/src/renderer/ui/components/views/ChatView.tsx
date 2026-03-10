@@ -138,10 +138,13 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
     [handleSend],
   );
 
+  const MAX_INPUT_HEIGHT = 220;
   const handleInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 150)}px`;
+      const newHeight = Math.min(inputRef.current.scrollHeight, MAX_INPUT_HEIGHT);
+      inputRef.current.style.height = `${newHeight}px`;
+      inputRef.current.style.overflowY = inputRef.current.scrollHeight > MAX_INPUT_HEIGHT ? 'auto' : 'hidden';
     }
   }, []);
 
