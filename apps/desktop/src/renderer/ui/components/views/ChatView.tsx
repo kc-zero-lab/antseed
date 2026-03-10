@@ -15,6 +15,8 @@ import styles from './ChatView.module.scss';
 import type { ChatMessage } from '../chat/chat-shared';
 import { buildDisplayMessages } from '../chat/chat-shared';
 
+const MAX_INPUT_HEIGHT = 220;
+
 function getMessageContentKey(content: unknown): string {
   if (typeof content === 'string') {
     return content.slice(0, 48);
@@ -103,6 +105,7 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
     setAttachedImage(null);
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
+      inputRef.current.style.overflowY = 'hidden';
       inputRef.current.focus();
     }
     actions.sendMessage(text, attachedImage?.base64, attachedImage?.mimeType);
@@ -138,7 +141,6 @@ export function ChatView({ active, onSelectView }: ChatViewProps) {
     [handleSend],
   );
 
-  const MAX_INPUT_HEIGHT = 220;
   const handleInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
