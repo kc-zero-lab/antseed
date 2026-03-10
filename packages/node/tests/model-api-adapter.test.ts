@@ -378,6 +378,49 @@ describe('transformOpenAIResponsesRequestToOpenAIChat', () => {
     expect(body.tool_choice).toEqual({ type: 'function', function: { name: 'search' } });
   });
 
+  it('uses call_id rather than item id for multi-turn tool correlation', () => {
+    const request = makeResponsesRequest({
+      body: new TextEncoder().encode(JSON.stringify({
+        model: 'gpt-4.1',
+        input: [
+          {
+            type: 'function_call',
+            id: 'fc_123',
+            call_id: 'call_search_1',
+            name: 'search',
+            arguments: '{"q":"antseed"}',
+          },
+          {
+            type: 'function_call_output',
+            call_id: 'call_search_1',
+            output: 'done',
+          },
+        ],
+      })),
+    });
+    const result = transformOpenAIResponsesRequestToOpenAIChat(request);
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    const messages = body.messages as Array<Record<string, unknown>>;
+
+    expect(messages[0]).toEqual({
+      role: 'assistant',
+      content: null,
+      tool_calls: [{
+        id: 'call_search_1',
+        type: 'function',
+        function: {
+          name: 'search',
+          arguments: '{"q":"antseed"}',
+        },
+      }],
+    });
+    expect(messages[1]).toEqual({
+      role: 'tool',
+      tool_call_id: 'call_search_1',
+      content: 'done',
+    });
+  });
+
   it('returns null for non-responses path', () => {
     const request = makeResponsesRequest({ path: '/v1/chat/completions' });
     expect(transformOpenAIResponsesRequestToOpenAIChat(request)).toBeNull();
@@ -562,6 +605,7 @@ describe('transformOpenAIChatResponseToOpenAIResponses', () => {
       type: 'response.function_call_arguments.delta',
       output_index: 1,
       item_id: 'call_123',
+      call_id: 'call_123',
       delta: '{"path":"hello.txt"}',
     });
 
@@ -571,21 +615,28 @@ describe('transformOpenAIChatResponseToOpenAIResponses', () => {
       type: 'response.function_call_arguments.done',
       output_index: 1,
       item_id: 'call_123',
+      call_id: 'call_123',
       name: 'write',
       arguments: '{"path":"hello.txt"}',
     });
   });
 
-  it('passes through error responses unchanged', () => {
+  it('normalizes error responses to responses-compatible json', () => {
     const errorResponse = makeOpenAIResponse({
       statusCode: 429,
+      headers: { 'content-type': 'text/plain' },
       body: new TextEncoder().encode(JSON.stringify({
         error: { message: 'Rate limit exceeded', type: 'rate_limit_error' },
       })),
     });
     const result = transformOpenAIChatResponseToOpenAIResponses(errorResponse, {});
     expect(result.statusCode).toBe(429);
+    expect(result.headers['content-type']).toBe('application/json');
     const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
     expect(body.error).toBeDefined();
+    expect(body.error).toEqual({
+      message: 'Rate limit exceeded',
+      type: 'rate_limit_error',
+    });
   });
 });

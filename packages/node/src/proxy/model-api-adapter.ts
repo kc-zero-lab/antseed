@@ -738,11 +738,14 @@ function convertResponsesInputToMessages(body: Record<string, unknown>): unknown
 
       // function_call → assistant message with tool_calls
       if (type === 'function_call') {
+        const chatCallId = typeof msg.call_id === 'string' && msg.call_id.length > 0
+          ? msg.call_id
+          : (typeof msg.id === 'string' ? msg.id : '');
         out.push({
           role: 'assistant',
           content: null,
           tool_calls: [{
-            id: typeof msg.id === 'string' ? msg.id : '',
+            id: chatCallId,
             type: 'function',
             function: {
               name: typeof msg.name === 'string' ? msg.name : '',
@@ -984,11 +987,13 @@ function buildOpenAIResponsesStream(body: OpenAIResponsesBody): Uint8Array {
     pushEvent('response.function_call_arguments.delta', {
       output_index: outputIndex,
       item_id: outputItem.id,
+      call_id: outputItem.call_id,
       delta: outputItem.arguments,
     });
     pushEvent('response.function_call_arguments.done', {
       output_index: outputIndex,
       item_id: outputItem.id,
+      call_id: outputItem.call_id,
       name: outputItem.name,
       arguments: outputItem.arguments,
     });
@@ -1014,7 +1019,14 @@ export function transformOpenAIChatResponseToOpenAIResponses(
   }
 
   if (response.statusCode >= 400) {
-    return response;
+    const errorPayload = parsed.error && typeof parsed.error === 'object'
+      ? parsed.error
+      : parsed;
+    return {
+      ...response,
+      headers: { ...response.headers, 'content-type': 'application/json' },
+      body: encodeJson(errorPayload === parsed ? parsed : { error: errorPayload }),
+    };
   }
 
   const responsesBody = buildOpenAIResponsesBody(response, parsed, options);
