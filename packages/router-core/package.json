@@ -1,6 +1,6 @@
 {
   "name": "@antseed/router-core",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Shared router infrastructure for Antseed plugins",
   "type": "module",
   "files": [
