@@ -11,6 +11,7 @@ type SettingsModuleOptions = {
   updateDashboardConfig: (
     config: Record<string, unknown>,
   ) => Promise<{ ok: boolean; data: unknown; error?: string | null; status?: number | null }>;
+  setDebugLogs: (enabled: boolean) => Promise<unknown>;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -39,9 +40,11 @@ export function initSettingsModule({
   uiState,
   getDashboardData,
   updateDashboardConfig,
+  setDebugLogs,
 }: SettingsModuleOptions) {
   let configFormPopulated = false;
   uiState.devMode = loadDesktopDevMode();
+  void setDebugLogs(uiState.devMode);
 
   function applyConfigFormData(formData: ConfigFormData): void {
     uiState.devMode = formData.devMode;
@@ -73,6 +76,7 @@ export function initSettingsModule({
   async function saveConfig(formData: ConfigFormData): Promise<void> {
     uiState.configSaving = true;
     persistDesktopDevMode(formData.devMode);
+    void setDebugLogs(formData.devMode);
     applyConfigFormData(formData);
     notifyUiStateChanged();
 
