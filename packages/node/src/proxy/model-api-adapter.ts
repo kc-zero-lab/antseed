@@ -42,7 +42,7 @@ function toStringContent(value: unknown): string {
           return '';
         }
         const block = entry as Record<string, unknown>;
-        if (block.type === 'text' && typeof block.text === 'string') {
+        if ((block.type === 'text' || block.type === 'input_text') && typeof block.text === 'string') {
           return block.text;
         }
         if (block.type === 'tool_result') {
@@ -59,7 +59,7 @@ function toStringContent(value: unknown): string {
   // Handle a single content block object (e.g. {type:'text', text:'...'})
   if (typeof value === 'object') {
     const block = value as Record<string, unknown>;
-    if (block.type === 'text' && typeof block.text === 'string') {
+    if ((block.type === 'text' || block.type === 'input_text') && typeof block.text === 'string') {
       return block.text;
     }
     if (block.type === 'tool_result') {
@@ -694,7 +694,7 @@ function convertResponsesInputToMessages(body: Record<string, unknown>): unknown
             type: 'function',
             function: {
               name: typeof msg.name === 'string' ? msg.name : '',
-              arguments: typeof msg.arguments === 'string' ? msg.arguments : '{}',
+              arguments: typeof msg.arguments === 'string' ? msg.arguments : JSON.stringify(msg.arguments ?? {}),
             },
           }],
         });
@@ -779,7 +779,7 @@ export function transformOpenAIResponsesRequestToOpenAIChat(
 
 export function transformOpenAIChatResponseToOpenAIResponses(
   response: SerializedHttpResponse,
-  options: { fallbackModel?: string | null },
+  options: { fallbackModel?: string | null; streamRequested?: boolean },
 ): SerializedHttpResponse {
   const parsed = parseJsonObject(response.body);
   if (!parsed) {
@@ -853,9 +853,52 @@ export function transformOpenAIChatResponseToOpenAIResponses(
     },
   };
 
+  if (!options.streamRequested) {
+    return {
+      ...response,
+      headers: { ...response.headers, 'content-type': 'application/json' },
+      body: encodeJson(responsesBody),
+    };
+  }
+
+  // Build SSE stream matching OpenAI Responses API streaming format
+  const sseEvents: string[] = [];
+  const sse = (event: string, data: unknown) => {
+    sseEvents.push(`event: ${event}\ndata: ${JSON.stringify(data)}\n`);
+  };
+
+  sse('response.created', responsesBody);
+
+  let outputIndex = 0;
+  for (const item of outputItems) {
+    const outputItem = item as Record<string, unknown>;
+    sse('response.output_item.added', { output_index: outputIndex, item: outputItem });
+
+    if (outputItem.type === 'message') {
+      const contentArr = outputItem.content as Array<Record<string, unknown>>;
+      for (let ci = 0; ci < contentArr.length; ci++) {
+        const part = contentArr[ci]!;
+        sse('response.content_part.added', { output_index: outputIndex, content_index: ci, part });
+        if (part.type === 'output_text') {
+          sse('response.output_text.delta', { output_index: outputIndex, content_index: ci, delta: part.text });
+          sse('response.output_text.done', { output_index: outputIndex, content_index: ci, text: part.text });
+        }
+        sse('response.content_part.done', { output_index: outputIndex, content_index: ci, part });
+      }
+    } else if (outputItem.type === 'function_call') {
+      sse('response.function_call_arguments.delta', { output_index: outputIndex, delta: outputItem.arguments });
+      sse('response.function_call_arguments.done', { output_index: outputIndex, arguments: outputItem.arguments });
+    }
+
+    sse('response.output_item.done', { output_index: outputIndex, item: outputItem });
+    outputIndex++;
+  }
+
+  sse('response.completed', responsesBody);
+
   return {
     ...response,
-    headers: { ...response.headers, 'content-type': 'application/json' },
-    body: encodeJson(responsesBody),
+    headers: { ...response.headers, 'content-type': 'text/event-stream' },
+    body: new TextEncoder().encode(sseEvents.join('\n')),
   };
 }

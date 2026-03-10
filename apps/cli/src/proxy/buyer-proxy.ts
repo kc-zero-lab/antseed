@@ -1688,6 +1688,7 @@ export class BuyerProxy {
         adaptResponse = (response: SerializedHttpResponse) =>
           transformOpenAIChatResponseToOpenAIResponses(response, {
             fallbackModel: transformed.requestedModel,
+            streamRequested: transformed.streamRequested,
           })
         forceDisableUpstreamStreaming = true
       } else {

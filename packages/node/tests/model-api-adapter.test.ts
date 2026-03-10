@@ -299,6 +299,21 @@ describe('transformOpenAIResponsesRequestToOpenAIChat', () => {
     expect(messages[2]).toEqual({ role: 'user', content: 'How are you?' });
   });
 
+  it('handles input_text content blocks in message input', () => {
+    const request = makeResponsesRequest({
+      body: new TextEncoder().encode(JSON.stringify({
+        model: 'gpt-4.1',
+        input: [
+          { role: 'user', content: [{ type: 'input_text', text: 'Hello from input_text' }] },
+        ],
+      })),
+    });
+    const result = transformOpenAIResponsesRequestToOpenAIChat(request);
+    const body = JSON.parse(new TextDecoder().decode(result!.request.body)) as Record<string, unknown>;
+    const messages = body.messages as Array<Record<string, unknown>>;
+    expect(messages[0]).toEqual({ role: 'user', content: 'Hello from input_text' });
+  });
+
   it('records streamRequested but always sends stream: false to upstream', () => {
     const request = makeResponsesRequest({
       body: new TextEncoder().encode(JSON.stringify({
@@ -420,6 +435,30 @@ describe('transformOpenAIChatResponseToOpenAIResponses', () => {
     });
     const body = JSON.parse(new TextDecoder().decode(result.body)) as Record<string, unknown>;
     expect(body.model).toBe('my-model');
+  });
+
+  it('returns SSE stream when streamRequested is true', () => {
+    const chatResponse = makeOpenAIResponse({
+      body: new TextEncoder().encode(JSON.stringify({
+        id: 'chatcmpl-stream',
+        model: 'gpt-4.1',
+        choices: [{
+          index: 0,
+          finish_reason: 'stop',
+          message: { role: 'assistant', content: 'Hello!' },
+        }],
+        usage: { prompt_tokens: 5, completion_tokens: 3 },
+      })),
+    });
+    const result = transformOpenAIChatResponseToOpenAIResponses(chatResponse, {
+      fallbackModel: 'fallback',
+      streamRequested: true,
+    });
+    expect(result.headers['content-type']).toBe('text/event-stream');
+    const sseText = new TextDecoder().decode(result.body);
+    expect(sseText).toContain('event: response.created');
+    expect(sseText).toContain('event: response.output_text.delta');
+    expect(sseText).toContain('event: response.completed');
   });
 
   it('passes through error responses unchanged', () => {
