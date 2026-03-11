@@ -5,7 +5,6 @@
    =================================================================== */
 
 .chat-bubble {
-  position: relative;
   max-width: 640px;
   font-size: 14px;
   line-height: 1.7;
@@ -585,42 +584,74 @@
 }
 
 /* ===================================================================
-   Copy response button
+   Message action bar (copy, etc.)
    =================================================================== */
 
+.messageActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: -4px;
+}
+
 .copyResponseBtn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
-  border-radius: 6px;
-  background: var(--bg-card);
+  border-radius: 5px;
+  background: none;
   color: var(--text-muted);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s, background 0.1s, color 0.1s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-
-  .chat-bubble:hover & {
-    opacity: 1;
-    pointer-events: auto;
-  }
+  transition: background 0.1s, color 0.1s;
 
   &:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
+
 }
 
 .copyResponseBtnCopied {
   color: var(--accent-green, #1fd87a);
+}
+
+/* ===================================================================
+   Radix tooltip
+   =================================================================== */
+
+.tooltipContent {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #2a2a2c;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  user-select: none;
+  animation-duration: 0.12s;
+  animation-timing-function: ease-out;
+
+  &[data-state='delayed-open'][data-side='top'] { animation-name: tooltip-slide-down; }
+  &[data-state='delayed-open'][data-side='bottom'] { animation-name: tooltip-slide-up; }
+}
+
+.tooltipArrow {
+  fill: #2a2a2c;
+}
+
+@keyframes tooltip-slide-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tooltip-slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ===================================================================

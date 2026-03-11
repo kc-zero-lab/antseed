@@ -1,7 +1,8 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Copy01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import { Copy01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import type { ReactNode } from 'react';
 import DOMPurify from 'dompurify';
 import { MarkdownContent } from './chat-utils.js';
@@ -434,20 +435,31 @@ function CopyResponseButton({ content }: { content: unknown }) {
   }, [content]);
 
   return (
-    <button
-      type="button"
-      className={`${styles.copyResponseBtn}${copied ? ` ${styles.copyResponseBtnCopied}` : ''}`}
-      onClick={handleCopy}
-      aria-label={copied ? 'Copied!' : 'Copy response'}
-      title={copied ? 'Copied!' : 'Copy'}
-    >
-      <HugeiconsIcon
-        icon={copied ? CheckmarkCircle01Icon : Copy01Icon}
-        size={14}
-        color="currentColor"
-        strokeWidth={1.5}
-      />
-    </button>
+    <Tooltip.Provider delayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <button
+            type="button"
+            className={`${styles.copyResponseBtn}${copied ? ` ${styles.copyResponseBtnCopied}` : ''}`}
+            onClick={handleCopy}
+            aria-label={copied ? 'Copied!' : 'Copy response'}
+          >
+            <HugeiconsIcon
+              icon={copied ? Tick02Icon : Copy01Icon}
+              size={16}
+              color="currentColor"
+              strokeWidth={2}
+            />
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content className={styles.tooltipContent} sideOffset={5}>
+            {copied ? 'Copied!' : 'Copy'}
+            <Tooltip.Arrow className={styles.tooltipArrow} />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }
 
@@ -503,7 +515,9 @@ export function ChatBubble({ message, streaming = false }: ChatBubbleProps) {
       {bubbleMeta}
       <div>{content}</div>
       {message.role !== 'user' && !streaming ? (
-        <CopyResponseButton content={message.content} />
+        <div className={styles.messageActions}>
+          <CopyResponseButton content={message.content} />
+        </div>
       ) : null}
     </div>
   );
