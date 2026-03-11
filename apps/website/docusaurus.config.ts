@@ -125,7 +125,7 @@ const config: Config = {
           'Desktop app (AntStation)',
           'Agent-to-agent commerce support',
         ],
-        downloadUrl: 'https://antseed.com/docs',
+        downloadUrl: 'https://github.com/AntSeed/antseed/releases',
         softwareVersion: '0.1.25',
         license: 'https://github.com/AntSeed/antseed/blob/main/LICENSE',
       }),
