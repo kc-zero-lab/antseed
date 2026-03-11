@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Copy01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 import type { ReactNode } from 'react';
 import DOMPurify from 'dompurify';
 import { MarkdownContent } from './chat-utils.js';
@@ -434,11 +436,17 @@ function CopyResponseButton({ content }: { content: unknown }) {
   return (
     <button
       type="button"
-      className={styles.copyResponseBtn}
+      className={`${styles.copyResponseBtn}${copied ? ` ${styles.copyResponseBtnCopied}` : ''}`}
       onClick={handleCopy}
-      aria-label="Copy response"
+      aria-label={copied ? 'Copied!' : 'Copy response'}
+      title={copied ? 'Copied!' : 'Copy'}
     >
-      {copied ? 'Copied!' : 'Copy'}
+      <HugeiconsIcon
+        icon={copied ? CheckmarkCircle01Icon : Copy01Icon}
+        size={14}
+        color="currentColor"
+        strokeWidth={1.5}
+      />
     </button>
   );
 }
@@ -495,9 +503,7 @@ export function ChatBubble({ message, streaming = false }: ChatBubbleProps) {
       {bubbleMeta}
       <div>{content}</div>
       {message.role !== 'user' && !streaming ? (
-        <div className={styles.copyResponseRow}>
-          <CopyResponseButton content={message.content} />
-        </div>
+        <CopyResponseButton content={message.content} />
       ) : null}
     </div>
   );

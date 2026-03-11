@@ -5,6 +5,7 @@
    =================================================================== */
 
 .chat-bubble {
+  position: relative;
   max-width: 640px;
   font-size: 14px;
   line-height: 1.7;
@@ -587,33 +588,39 @@
    Copy response button
    =================================================================== */
 
-.copyResponseRow {
+.copyResponseBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   display: flex;
-  justify-content: flex-start;
-  padding: 4px 16px 8px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, background 0.1s, color 0.1s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 
   .chat-bubble:hover & {
     opacity: 1;
     pointer-events: auto;
   }
-}
-
-.copyResponseBtn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 3px;
 
   &:hover {
-    color: var(--text-primary);
     background: var(--bg-hover);
+    color: var(--text-primary);
   }
+}
+
+.copyResponseBtnCopied {
+  color: var(--accent-green, #1fd87a);
 }
 
 /* ===================================================================
